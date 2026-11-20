@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.7.6';
+const VERSION = '0.7.7';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -205,7 +205,7 @@ function bounds() {
   let zMin = Infinity; SIM.paras.forEach(p => p.track.forEach(q => { if (q.t <= SIM.tEnd) zMin = Math.min(zMin, q.z); }));
   let z0 = Math.max(0, Math.floor(((isFinite(zMin) ? zMin : 0) - 200) / 250) * 250);
   // v0.6.2 : au moins 72 px sous le para le plus bas pour la ligne des distances de la fin (sinon elle tombait sur l'échelle)
-  const kk = 110 / Math.max(100, bot - top); /* 110 px : place pour deux lignes de distances à la fin */ if (isFinite(zMin)) z0 = Math.min(z0, (zMin - kk * SIM.H) / (1 - kk));
+  const kk = 150 / Math.max(100, bot - top); /* 150 px : deux lignes de distances + la rangée de ronds numérotés */ if (isFinite(zMin)) z0 = Math.min(z0, (zMin - kk * SIM.H) / (1 - kk));
   view = { x0, x1, left, right, top, bot, z0, sx: (right - left) / (x1 - x0), sy: (bot - top) / (SIM.H - z0) };
 }
 const X = x => view.left + (x - view.x0) * view.sx;
@@ -289,6 +289,22 @@ function draw() {
     let r = 0; while ((rows[r] || []).some(([u1, u2]) => x1 < u2 - 2 && x2 > u1 + 2)) r++;
     (rows[r] = rows[r] || []).push([x1, x2]); rowOf.set(c, r);
   });
+  // v0.7.7 (Henri) : pointillés de couleur prolongés sous tous les segments jusqu'à une rangée de ronds numérotés (couleur du
+  // para, numéro seul) ; un para du milieu a deux traits : sa position quand le précédent… et quand le suivant ont figé l'écart
+  if (isEnd && rows.length) {
+    const pts = [];
+    meas.forEach(([c]) => { if (c.k !== lastK) return; [[c.a, c.i], [c.b, c.i + 1]].forEach(([q, i]) => { const x = X(q.x); if (!pts.some(p => p.i === i && Math.abs(p.x - x) < 3)) pts.push({ x, y: Y(q.z), i }); }); });
+    const cy = endY + 34 * rows.length + 4;
+    pts.sort((a, b) => a.x - b.x);
+    let prev = null; pts.forEach(p => { p.cy = prev && p.x - prev.x < 15 && prev.cy === cy ? cy + 16 : cy; prev = p; }); // ronds trop proches : un cran plus bas
+    g.save(); g.setLineDash([2, 3]); g.lineWidth = 1.4;
+    pts.forEach(p => { g.strokeStyle = SIM.paras[p.i].color; g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(p.x, p.cy - 7); g.stroke(); });
+    g.restore();
+    pts.forEach(p => {
+      g.beginPath(); g.arc(p.x, p.cy, 7, 0, Math.PI * 2); g.fillStyle = SIM.paras[p.i].color; g.fill(); g.strokeStyle = '#000'; g.lineWidth = 1.2; g.stroke();
+      g.font = '700 9px -apple-system, Helvetica, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#000'; g.fillText(String(p.i + 1), p.x, p.cy + 0.5);
+    });
+  }
   const placed = []; meas.forEach(([c, col]) => hMeasure(c, col, placed, c.k === lastK ? endY + 34 * rowOf.get(c) : null));
   // Échelle
   const ratio = view.sy > 0 ? view.sx / view.sy : 1;
@@ -305,12 +321,7 @@ function hMeasure(c, col, placed, lineY) {
   const ax = X(c.a.x), bx = X(c.b.x), ya = Y(c.a.z), yb = Y(c.b.z), y = below ? lineY : (ya + yb) / 2;
   g.save(); g.strokeStyle = col; g.globalAlpha = .85; g.lineWidth = 1;
   g.setLineDash([2, 3]);
-  if (below) { // v0.7.5 : pointillés vers chaque para dans SA couleur (les paras ont dérivé sous voile, le trait ne tombe plus sur eux)
-    g.globalAlpha = 1; g.lineWidth = 1.4;
-    g.strokeStyle = SIM.paras[c.i].color; g.beginPath(); g.moveTo(ax, ya); g.lineTo(ax, y); g.stroke();
-    g.strokeStyle = SIM.paras[c.i + 1].color; g.beginPath(); g.moveTo(bx, yb); g.lineTo(bx, y); g.stroke();
-    g.strokeStyle = col; g.globalAlpha = .85; g.lineWidth = 1;
-  } else { g.beginPath(); g.moveTo(ax, ya); g.lineTo(ax, y); g.moveTo(bx, yb); g.lineTo(bx, y); g.stroke(); }
+  if (below) { /* v0.7.7 : à la fin, les pointillés de couleur sont tracés par draw() jusqu'aux ronds numérotés du bas */ } else { g.beginPath(); g.moveTo(ax, ya); g.lineTo(ax, y); g.moveTo(bx, yb); g.lineTo(bx, y); g.stroke(); }
   g.setLineDash([]);
   g.beginPath(); g.moveTo(ax, y); g.lineTo(bx, y); g.moveTo(ax, y - 4); g.lineTo(ax, y + 4); g.moveTo(bx, y - 4); g.lineTo(bx, y + 4); g.stroke(); g.restore();
   g.font = '700 11px -apple-system, Helvetica, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'bottom';
