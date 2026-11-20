@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.7.2';
+const VERSION = '0.7.3';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -365,16 +365,37 @@ document.querySelectorAll('.tabs [data-tab]').forEach(b => b.addEventListener('c
 // ---------- Configurations enregistrées (menu sous le bouton Largage) ----------
 // Une configuration = paras (ordre et types), vent (nom + valeurs), sens, vitesse, hauteur, temps entre sorties (ou Auto)
 if (!Array.isArray(S.configs)) S.configs = [];
+// v0.7.3 : configurations de base (demandées par Henri), toujours en tête du menu, dans cet ordre, non supprimables.
+// Face au vent, 70 kt, 4 000 m, temps entre sorties Auto. FF = vertical, VR = à plat.
+const BUILTIN = (() => {
+  const W = n => clone(DEF.winds.find(w => w.name === n)), nul = 'Vent nul', cst = 'Vent constant 6 m/s', dec = 'Vent fort en altitude';
+  const P = s => s.split(' ').map(t => ({ type: { FF: 'vertical', VR: 'plat', E: 'eleve' }[t] }));
+  const C = (name, paras, wind) => ({ name, paras: P(paras), wind: W(wind), dir: 'R', speed: 70, height: 4000, sep: null, builtin: true });
+  return [
+    C('Démo', 'VR VR', nul),
+    C('FF puis VR · vent nul', 'FF VR', nul),
+    C('VR puis FF · vent nul', 'VR FF', nul),
+    C('FF puis VR · vent constant', 'FF VR', cst),
+    C('VR puis FF · vent constant', 'VR FF', cst),
+    C('FF puis VR · vent décroissant', 'FF VR', dec),
+    C('VR puis FF · vent décroissant', 'VR FF', dec),
+    C('FF, 2 VR, élève, FF · vent décroissant', 'FF VR VR E FF', dec),
+    C('2 VR, FF, élève, FF · vent décroissant', 'VR VR FF E FF', dec)
+  ];
+})();
 let cfgLoaded = null; // nom de la configuration chargée, tant qu'on n'a rien modifié
 function renderConfigs() {
   const sel = $('cfgSel'); sel.innerHTML = '';
   const add = (v, t, dis) => { const o = document.createElement('option'); o.value = v; o.textContent = t; if (dis) o.disabled = true; sel.append(o); };
   add('', 'Configs', false); // libellé court : « Configurations » ne tenait pas sur l'iPhone
+  BUILTIN.forEach((c, i) => add('b' + i, c.name));
+  if (S.configs.length) add('sep0', '──────────', true);
   S.configs.forEach((c, i) => add('c' + i, c.name));
   add('sep', '──────────', true);
   add('save', '＋ Enregistrer la configuration actuelle…');
-  if (cfgLoaded != null) add('del', `🗑 Supprimer « ${cfgLoaded} »`);
-  const i = S.configs.findIndex(c => c.name === cfgLoaded); sel.value = i >= 0 ? 'c' + i : '';
+  const mine = S.configs.findIndex(c => c.name === cfgLoaded), base = BUILTIN.findIndex(c => c.name === cfgLoaded);
+  if (mine >= 0) add('del', `🗑 Supprimer « ${cfgLoaded} »`); // les configurations de base ne se suppriment pas
+  sel.value = mine >= 0 ? 'c' + mine : base >= 0 ? 'b' + base : '';
 }
 function currentConfig(name) {
   const w = S.winds[S.windIdx] || S.winds[0];
@@ -390,10 +411,11 @@ function loadConfig(c) {
 }
 $('cfgSel').addEventListener('change', async e => {
   const v = e.target.value;
-  if (v[0] === 'c') { loadConfig(S.configs[+v.slice(1)]); toast(`Configuration « ${cfgLoaded} »`); return; }
+  if (v[0] === 'c' || v[0] === 'b') { loadConfig((v[0] === 'b' ? BUILTIN : S.configs)[+v.slice(1)]); toast(`Configuration « ${cfgLoaded} »`); return; }
   if (v === 'save') {
     renderConfigs();
-    const n = await ask('Nom de cette configuration (ex. « FF devant les VR, vent fort ») :', cfgLoaded || ''); if (!n) return;
+    const n = await ask('Nom de cette configuration (ex. « FF devant les VR, vent fort ») :', ''); if (!n) return;
+    if (BUILTIN.some(c => c.name === n)) { toast('Ce nom est celui d\'une configuration de base : choisis-en un autre'); return; }
     const k = S.configs.findIndex(c => c.name === n);
     if (k >= 0 && !(await ask(`« ${n} » existe déjà : la remplacer ?`))) return;
     if (k >= 0) S.configs[k] = currentConfig(n); else S.configs.push(currentConfig(n));
