@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.7.8';
+const VERSION = '0.7.9';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -419,7 +419,8 @@ const BUILTIN = (() => {
     C('2 VR, FF, élève, FF · vent décroissant', 'VR VR FF E FF', dec)
   ];
 })();
-let cfgLoaded = null; // nom de la configuration chargée, tant qu'on n'a rien modifié
+// v0.7.9 : configuration en cours gardée (S.cfgName) même après une modification (S.cfgDirty → « (modifiée) »)
+if (typeof S.cfgName !== 'string') S.cfgName = null;
 function renderConfigs() {
   const sel = $('cfgSel'); sel.innerHTML = '';
   const add = (v, t, dis) => { const o = document.createElement('option'); o.value = v; o.textContent = t; if (dis) o.disabled = true; sel.append(o); };
@@ -429,9 +430,12 @@ function renderConfigs() {
   S.configs.forEach((c, i) => add('c' + i, c.name));
   add('sep', '──────────', true);
   add('save', '＋ Enregistrer la configuration actuelle…');
-  const mine = S.configs.findIndex(c => c.name === cfgLoaded), base = BUILTIN.findIndex(c => c.name === cfgLoaded);
-  if (mine >= 0) add('del', `🗑 Supprimer « ${cfgLoaded} »`); // les configurations de base ne se suppriment pas
-  sel.value = mine >= 0 ? 'c' + mine : base >= 0 ? 'b' + base : '';
+  const n = S.cfgName, mine = S.configs.findIndex(c => c.name === n), base = BUILTIN.findIndex(c => c.name === n);
+  if (mine >= 0) add('del', `🗑 Supprimer « ${n} »`); // les configurations de base ne se suppriment pas
+  sel.value = mine >= 0 ? 'c' + mine : base >= 0 ? 'b' + base : ''; // la configuration en cours en surbrillance dans la liste
+  const lbl = $('cfgLbl'), known = mine >= 0 || base >= 0;
+  lbl.textContent = known ? n + (S.cfgDirty ? ' (modif.)' : '') : 'Configs';
+  lbl.classList.toggle('dirty', known && !!S.cfgDirty);
 }
 function currentConfig(name) {
   const w = S.winds[S.windIdx] || S.winds[0];
@@ -442,7 +446,7 @@ function loadConfig(c) {
   let j = S.winds.findIndex(w => w.name === c.wind.name && w.w.join() === c.wind.w.join());
   if (j < 0) j = S.winds.findIndex(w => w.name === c.wind.name);
   if (j < 0) { S.winds.push(clone(c.wind)); j = S.winds.length - 1; } else S.winds[j].w = c.wind.w.slice(); // le vent tel qu'il était enregistré
-  S.windIdx = j; changed(); cfgLoaded = c.name; renderConfigs();
+  S.windIdx = j; changed(); S.cfgName = c.name; S.cfgDirty = false; save(); renderConfigs();
   if (!$('sheet').classList.contains('hidden')) renderSheet();
 }
 $('cfgSel').addEventListener('change', async e => {
@@ -450,21 +454,21 @@ $('cfgSel').addEventListener('change', async e => {
   if (v[0] === 'c' || v[0] === 'b') { loadConfig((v[0] === 'b' ? BUILTIN : S.configs)[+v.slice(1)]); return; } /* pas de message : le menu affiche déjà le nom (et le message cachait les distances du bas) */
   if (v === 'save') {
     renderConfigs();
-    const n = await ask('Nom de cette configuration (ex. « FF devant les VR, vent fort ») :', ''); if (!n) return;
+    const n = await ask('Nom de cette configuration (ex. « FF devant les VR, vent fort ») :', ''); if (!n) { renderConfigs(); return; }
     if (BUILTIN.some(c => c.name === n)) { toast('Ce nom est celui d\'une configuration de base : choisis-en un autre'); return; }
     const k = S.configs.findIndex(c => c.name === n);
     if (k >= 0 && !(await ask(`« ${n} » existe déjà : la remplacer ?`))) return;
     if (k >= 0) S.configs[k] = currentConfig(n); else S.configs.push(currentConfig(n));
-    save(); cfgLoaded = n; renderConfigs(); toast('Configuration enregistrée'); return;
+    S.cfgName = n; S.cfgDirty = false; save(); renderConfigs(); toast('Configuration enregistrée'); return;
   }
   if (v === 'del') {
-    const n = cfgLoaded; renderConfigs();
+    const n = S.cfgName; renderConfigs();
     if (!(await ask(`Supprimer la configuration « ${n} » ?`))) return;
-    S.configs = S.configs.filter(c => c.name !== n); save(); cfgLoaded = null; renderConfigs(); toast('Configuration supprimée'); return;
+    S.configs = S.configs.filter(c => c.name !== n); S.cfgName = null; save(); renderConfigs(); toast('Configuration supprimée'); return;
   }
   renderConfigs();
 });
-function changed(keepTime) { if (!keepTime) cfgLoaded = null; save(); simulate(); if (!keepTime) { tNow = 0; playing = false; } else tNow = Math.min(tNow, SIM.tEnd); draw(); syncCtrl(); syncSummary(); renderConfigs(); }
+function changed(keepTime) { if (!keepTime && S.cfgName) S.cfgDirty = true; save(); simulate(); if (!keepTime) { tNow = 0; playing = false; } else tNow = Math.min(tNow, SIM.tEnd); draw(); syncCtrl(); syncSummary(); renderConfigs(); }
 
 function renderParas() {
   const ul = $('paraList'); ul.innerHTML = '';

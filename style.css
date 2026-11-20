@@ -11,11 +11,14 @@ input,select{background:#1d1d1d;border:1.5px solid #444;border-radius:8px;paddin
 #top>*{pointer-events:auto}
 .pill{background:rgba(20,20,20,.85);border-color:#666;font-weight:600}
 #leftCol{flex:none;display:flex;flex-direction:column;gap:6px;width:8.4em}
-#cfgSel{font-size:13px!important}
 #leftCol .pill{width:100%}
-#cfgSel{border-radius:10px;padding:7px 26px 7px 10px;font-size:14px;color:#ddd;-webkit-appearance:none;appearance:none;
-  background:rgba(20,20,20,.85) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23bbb' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 9px center;
-  text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
+/* v0.7.9 : le bouton affiche la configuration en cours (petite police, 2 lignes au besoin) ; le vrai menu (select) est
+   posé dessus, transparent : un appui ouvre la liste native, configuration en cours en surbrillance */
+#cfgBox{position:relative;border:1.5px solid #666;border-radius:10px;min-height:42px;padding:4px 17px 4px 7px;display:flex;align-items:center;
+  background:rgba(20,20,20,.85) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23bbb' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 5px center}
+#cfgLbl{font-size:10.5px;font-weight:600;line-height:1.18;color:#ddd;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+#cfgLbl.dirty{color:#bbb;font-style:italic}
+#cfgSel{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:0;padding:0;margin:0;-webkit-appearance:none;appearance:none;font-size:16px}
 #dirBox{flex:1;min-width:70px;display:flex;justify-content:center;align-self:stretch}
 #bDir{padding:5px 8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:100%;max-width:170px;min-width:0;height:100%}
 #bDir svg{display:block;flex:none;max-width:100%;height:auto}
