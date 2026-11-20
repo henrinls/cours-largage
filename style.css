@@ -22,10 +22,11 @@ input,select{background:#1d1d1d;border:1.5px solid #444;border-radius:8px;paddin
 #bDir .gap{font-size:12px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums;color:#fff}
 #clock{flex:none;align-self:flex-start;white-space:nowrap;width:6.9em;text-align:right;font-variant-numeric:tabular-nums;padding-top:9px;font:700 16px ui-monospace,Menlo,monospace;color:#fff;text-shadow:0 0 4px #000}
 
-#ctrl{position:fixed;left:50%;transform:translateX(-50%);bottom:12px;display:flex;gap:10px;z-index:20}
-#ctrl button{width:56px;height:48px;font-size:22px;border-radius:14px;background:rgba(25,25,25,.9);border-color:#777;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+/* v0.7.8 : lecture, retour au début et barre d'avancement sur UNE seule ligne en bas : le dessin descend plus bas */
+#ctrl{position:fixed;left:calc(12px + env(safe-area-inset-left));bottom:12px;display:flex;gap:8px;z-index:20}
+#ctrl button{width:52px;height:46px;font-size:22px;border-radius:14px;background:rgba(25,25,25,.9);border-color:#777;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #ctrl button.on{background:#1f6fb2;border-color:#1f6fb2}
-#scrub{position:fixed;left:calc(16px + env(safe-area-inset-left));right:calc(16px + env(safe-area-inset-right));width:auto;bottom:70px;z-index:20;padding:0;height:28px;background:transparent;border:0;accent-color:#4fc3f7;touch-action:none}
+#scrub{position:fixed;left:calc(12px + 52px * 2 + 8px + 14px + env(safe-area-inset-left));right:calc(14px + env(safe-area-inset-right));width:auto;bottom:21px;z-index:20;padding:0;height:28px;background:transparent;border:0;accent-color:#4fc3f7;touch-action:none}
 
 #sheet{position:fixed;left:0;right:0;bottom:0;max-height:82%;overflow:auto;background:#1a1a1a;border-top:2px solid #444;border-radius:16px 16px 0 0;z-index:40;padding:10px calc(14px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left))}
 @media (orientation:landscape){#sheet{left:auto;top:0;width:min(440px,60%);max-height:none;border-radius:16px 0 0 16px;border-top:0;border-left:2px solid #444;padding-top:calc(10px + env(safe-area-inset-top))}}
@@ -64,7 +65,7 @@ label{display:block;font-size:12px;color:#aaa;margin:6px 0 3px}
 #dialog{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;display:flex;align-items:center;justify-content:center;padding:20px}
 #dialog .box{background:#222;border:1.5px solid #555;border-radius:14px;padding:16px;width:min(420px,100%)}
 #dialog input{margin:8px 0 12px}
-#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:110px;background:rgba(30,30,30,.95);border:1px solid #555;border-radius:12px;padding:9px 14px;z-index:70;max-width:90%;text-align:center;font-size:14px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:70px;background:rgba(30,30,30,.95);border:1px solid #555;border-radius:12px;padding:9px 14px;z-index:70;max-width:90%;text-align:center;font-size:14px}
 
 /* petits écrans (iPhone SE) : la ligne du haut tient sur la largeur */
 @media (max-width:360px){#top{gap:6px}#leftCol{width:7.6em}#clock{font-size:13px}#bDir{padding:6px 4px}#bDir .gap{white-space:normal;text-align:center;line-height:1.15}}

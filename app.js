@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.7.7';
+const VERSION = '0.7.8';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -200,7 +200,7 @@ function bounds() {
   [-4, tPlane1].forEach(t => { const x = planeX(t); x0 = Math.min(x0, x); x1 = Math.max(x1, x); });
   if (!isFinite(x0)) { x0 = -500; x1 = 500; }
   const span = Math.max(400, x1 - x0), pad = span * 0.04; x0 -= pad; x1 += pad;
-  const top = $('top').getBoundingClientRect().bottom + 34, bot = $('scrub').getBoundingClientRect().top - 22, left = 50, right = W - 14;
+  const top = $('top').getBoundingClientRect().bottom + 34, bot = Math.min($('scrub').getBoundingClientRect().top, $('ctrl').getBoundingClientRect().top) - 22, left = 50, right = W - 14;
   // bas de la vue : un peu sous l'ouverture la plus basse (l'animation s'arrête quand le dernier a ouvert : pas besoin du sol)
   let zMin = Infinity; SIM.paras.forEach(p => p.track.forEach(q => { if (q.t <= SIM.tEnd) zMin = Math.min(zMin, q.z); }));
   let z0 = Math.max(0, Math.floor(((isFinite(zMin) ? zMin : 0) - 200) / 250) * 250);
