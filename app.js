@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.5.3';
+const VERSION = '0.5.4';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -20,7 +20,7 @@ const DEF = {
   winds: [
     { name: 'Vent nul', w: [0, 0, 0, 0] },
     { name: 'Vent constant 6 m/s', w: [6, 6, 6, 6] },
-    { name: 'Vent fort en altitude', w: [3, 8, 12, 16] }
+    { name: 'Vent fort en altitude', w: [5, 12, 18, 25] }
   ],
   windIdx: 0
 };
@@ -83,6 +83,12 @@ if (!S.windsV3) {
   const mine = S.winds.filter(w => !DEF.winds.some(d => d.name === w.name) && !GONE.includes(w.name));
   S.winds = clone(DEF.winds).concat(mine);
   const j = S.winds.findIndex(w => w.name === (GONE.includes(cur) ? 'Vent constant 6 m/s' : cur)); S.windIdx = j >= 0 ? j : 0; S.windsV3 = true;
+}
+// v0.5.4 : vent fort en altitude plus marqué (5 m/s au sol → 25 m/s en haut, au lieu de 3 → 16), sauf s'il a été retouché
+if (!S.windsV4) {
+  const w = S.winds.find(x => x.name === 'Vent fort en altitude');
+  if (w && w.w.join() === '3,8,12,16') w.w = [5, 12, 18, 25];
+  S.windsV4 = true;
 }
 if (!(+S.redGap > 0)) S.redGap = DEF.redGap;
 S.paras.forEach(p => delete p.mon); delete S.vzMon;
