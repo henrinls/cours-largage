@@ -1,0 +1,57 @@
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:#141414;color:#eee;font:15px/1.35 -apple-system,system-ui,Helvetica,Arial,sans-serif}
+button,input,select{font:inherit;color:inherit;touch-action:manipulation}
+button{background:#2a2a2a;border:1.5px solid #555;border-radius:10px;padding:8px 10px;cursor:pointer}
+button.primary{background:#1f6fb2;border-color:#1f6fb2;color:#fff}
+button.danger{border-color:#a33;color:#f88}
+input,select{background:#1d1d1d;border:1.5px solid #444;border-radius:8px;padding:7px 8px;width:100%}
+#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+
+#top{position:fixed;top:0;left:0;right:0;display:flex;gap:10px;align-items:center;padding:calc(10px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right)) 6px calc(10px + env(safe-area-inset-left));z-index:20;pointer-events:none}
+#top>*{pointer-events:auto}
+.pill{background:rgba(20,20,20,.85);border-color:#666;font-weight:600}
+#summary{flex:1;min-width:0;font-size:12px;color:#bbb;line-height:1.25;text-shadow:0 0 3px #000;pointer-events:none}
+#clock{flex:none;white-space:nowrap;font:700 16px ui-monospace,Menlo,monospace;color:#fff;text-shadow:0 0 4px #000}
+
+#ctrl{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom));display:flex;gap:10px;z-index:20}
+#ctrl button{width:56px;height:48px;font-size:22px;border-radius:14px;background:rgba(25,25,25,.9);border-color:#777;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#ctrl button.on{background:#1f6fb2;border-color:#1f6fb2}
+
+#sheet{position:fixed;left:0;right:0;bottom:0;max-height:82%;overflow:auto;background:#1a1a1a;border-top:2px solid #444;border-radius:16px 16px 0 0;z-index:40;padding:10px calc(14px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left))}
+@media (orientation:landscape){#sheet{left:auto;top:0;width:min(440px,60%);max-height:none;border-radius:16px 0 0 16px;border-top:0;border-left:2px solid #444;padding-top:calc(10px + env(safe-area-inset-top))}}
+.hidden{display:none!important}
+.tabs{display:flex;gap:8px;position:sticky;top:-10px;background:#1a1a1a;padding:6px 0 8px;z-index:2}
+.tabs button.on{background:#1f6fb2;border-color:#1f6fb2;color:#fff}
+.tabs .close{margin-left:auto}
+h3{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#9ab;margin:16px 0 6px}
+label{display:block;font-size:12px;color:#aaa;margin:6px 0 3px}
+.hint{font-size:12px;color:#999;margin:6px 0}
+.row{margin:6px 0}
+.wide{width:100%}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end}
+.grid2>button{align-self:stretch}
+.seg{display:flex;gap:6px}.seg button{flex:1;font-size:13px}.seg button.on{background:#1f6fb2;border-color:#1f6fb2;color:#fff}
+
+#paraList{list-style:none;margin:0;padding:0}
+#paraList li{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #2a2a2a;background:#1a1a1a}
+#paraList li.drag{position:relative;z-index:5;background:#262626;box-shadow:0 4px 14px rgba(0,0,0,.6)}
+#paraList .hdl{touch-action:none;cursor:grab;font-size:22px;color:#888;padding:4px 8px 4px 2px;-webkit-user-select:none;user-select:none}
+#paraList .num{width:22px;font-weight:700;text-align:center}
+#paraList .type{flex:1;font-weight:600;text-align:left}
+#paraList .mon{font-size:13px;white-space:nowrap}
+#paraList .mon.on{background:#7a4b00;border-color:#d08a00;color:#fff}
+#paraList .mon:disabled{opacity:.35}
+#paraList .del{padding:6px 10px}
+
+.wl{display:grid;grid-template-columns:1fr 92px 60px;gap:8px;align-items:center;margin:4px 0}
+.wl span{font-size:13px;color:#ccc}.wl small{color:#999;font-size:12px}
+
+.ptab{width:100%;border-collapse:collapse;font-size:13px}
+.ptab th{font-weight:600;color:#ccc;padding:4px}
+.ptab td{padding:3px}.ptab td:first-child{color:#aaa;font-size:12px}
+.ptab input{padding:6px;text-align:center}
+
+#dialog{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;display:flex;align-items:center;justify-content:center;padding:20px}
+#dialog .box{background:#222;border:1.5px solid #555;border-radius:14px;padding:16px;width:min(420px,100%)}
+#dialog input{margin:8px 0 12px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + env(safe-area-inset-bottom));background:rgba(30,30,30,.95);border:1px solid #555;border-radius:12px;padding:9px 14px;z-index:70;max-width:90%;text-align:center;font-size:14px}

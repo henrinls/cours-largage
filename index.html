@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cours largage">
+<meta name="theme-color" content="#111111">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Cours de largage · simulation</title>
+<link rel="stylesheet" href="style.css?v=0.1.0">
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<header id="top">
+  <button id="btnSetup" class="pill">⚙ Largage</button>
+  <div id="summary"></div>
+  <div id="clock"></div>
+</header>
+
+<nav id="ctrl">
+  <button id="bPlay" title="Lecture">▶</button>
+  <button id="bPause" title="Pause">⏸</button>
+  <button id="bStop" title="Retour au début">⏹</button>
+  <button id="bSlow" title="Appui prolongé : ralenti (vitesse réelle)">🐢</button>
+</nav>
+
+<section id="sheet" class="hidden">
+  <div class="tabs">
+    <button data-tab="largage" class="on">Largage</button>
+    <button data-tab="params">Paramètres</button>
+    <button id="sheetClose" class="close">✕</button>
+  </div>
+
+  <div id="tab-largage" class="tab">
+    <h3>Paras (dans l'ordre de sortie)</h3>
+    <ul id="paraList"></ul>
+    <div class="row grid2">
+      <button id="addPara" class="wide">＋ Ajouter un para</button>
+      <button id="clearParas" class="wide">Tout retirer</button>
+    </div>
+    <p class="hint">Appui sur le type pour passer de vertical à à plat à élève. ≡ : glisser pour changer l'ordre de sortie.</p>
+
+    <h3>Avion</h3>
+    <div class="grid2">
+      <div><label>Vitesse de largage (kt)</label><input id="p_speed" inputmode="decimal"></div>
+      <div><label>Hauteur de largage (m sol)</label><input id="p_height" inputmode="decimal"></div>
+      <div><label>Temps entre sorties (s)</label><input id="p_sep" inputmode="decimal"></div>
+      <div><button id="sepAuto" class="wide">Auto</button><p class="hint" id="sepHint"></p></div>
+    </div>
+    <label>Sens de vol de l'avion</label>
+    <div class="row seg">
+      <button id="dirL">← vers la gauche (face au vent)</button>
+      <button id="dirR">vers la droite → (vent dans le dos)</button>
+    </div>
+
+    <h3>Vent</h3>
+    <p class="hint">Le vent vient toujours de la droite et va vers la gauche (seule la composante face / dos compte pour la séparation).</p>
+    <div class="row"><select id="windSel"></select></div>
+    <div id="windLayers"></div>
+    <div class="row grid2">
+      <button id="windSaveAs" class="wide">Enregistrer sous…</button>
+      <button id="windDelete" class="wide danger">Supprimer ce vent</button>
+    </div>
+    <p class="hint" id="windHint"></p>
+  </div>
+
+  <div id="tab-params" class="tab hidden">
+    <h3>Chuteurs</h3>
+    <table class="ptab">
+      <thead><tr><th></th><th>Vertical</th><th>À plat</th><th>Élève</th></tr></thead>
+      <tbody>
+        <tr><td>Vitesse de chute (m/s)</td><td><input id="t_vertical_vt" inputmode="decimal"></td><td><input id="t_plat_vt" inputmode="decimal"></td><td><input id="t_eleve_vt" inputmode="decimal"></td></tr>
+        <tr><td>Chute les 10 premières s (m)</td><td><input id="t_vertical_d10" inputmode="decimal"></td><td><input id="t_plat_d10" inputmode="decimal"></td><td><input id="t_eleve_d10" inputmode="decimal"></td></tr>
+        <tr><td>Ouverture (m sol)</td><td><input id="t_vertical_hOpen" inputmode="decimal"></td><td><input id="t_plat_hOpen" inputmode="decimal"></td><td><input id="t_eleve_hOpen" inputmode="decimal"></td></tr>
+      </tbody>
+    </table>
+    <h3>Sous voile</h3>
+    <div class="grid2">
+      <div><label>Vitesse verticale (m/s)</label><input id="p_vz" inputmode="decimal"></div>
+      <div><label>Option moniteur (m/s)</label><input id="p_vzMon" inputmode="decimal"></div>
+      <div><label>Perte à l'ouverture (m)</label><input id="p_openLoss" inputmode="decimal"></div>
+    </div>
+    <h3>Séparation et affichage</h3>
+    <div class="grid2">
+      <div><label>Écart voulu entre paras (m)</label><input id="p_gap" inputmode="decimal"></div>
+      <div><label>Points tous les (s)</label><input id="p_dot" inputmode="decimal"></div>
+      <div><label>Vitesse de l'animation (×)</label><input id="p_play" inputmode="decimal"></div>
+    </div>
+    <p class="hint">Ralenti (🐢, appui prolongé) = vitesse réelle. Sous voile, le para n'a pas de vitesse propre : il dérive avec le vent de sa tranche. Projection à la sortie : le para part à la vitesse de l'avion et l'air le freine.</p>
+    <div class="row"><button id="resetParams" class="wide">Remettre les valeurs par défaut</button></div>
+    <p class="hint">Version <span id="ver"></span></p>
+  </div>
+</section>
+
+<div id="dialog" class="hidden">
+  <div class="box">
+    <p id="dlgText"></p>
+    <input id="dlgInput">
+    <div class="grid2"><button id="dlgCancel">Annuler</button><button id="dlgOk" class="primary">OK</button></div>
+  </div>
+</div>
+<div id="toast" class="hidden"></div>
+
+<script src="app.js?v=0.1.0"></script>
+</body>
+</html>
