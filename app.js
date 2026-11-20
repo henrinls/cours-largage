@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.7.0';
+const VERSION = '0.7.1';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -492,20 +492,11 @@ function renderWinds() {
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
     box.append(row);
   }
-  $('windDelete').disabled = S.winds.length <= 1;
   const vg = SIM ? SIM.vpg : 0;
   $('windHint').textContent = SIM ? `Vitesse sol de l'avion : ${fmtInt(Math.abs(vg) / KT)} kt (${fmt1(Math.abs(vg))} m/s) → ${fmtInt(Math.abs(vg) * SIM.sep)} m entre deux sorties au moment de sortir. Une valeur négative = vent de la gauche.` : '';
 }
 $('windSel').addEventListener('change', e => { S.windIdx = +e.target.value; renderWinds(); changed(); });
-$('windSaveAs').addEventListener('click', async () => {
-  const n = await ask('Nom de ce vent (ex. « Cisaillement au sol ») :', ''); if (!n || !n.trim()) return;
-  S.winds.push({ name: n.trim(), w: S.winds[S.windIdx].w.slice() }); S.windIdx = S.winds.length - 1; renderWinds(); changed(); toast('Vent enregistré');
-});
-$('windDelete').addEventListener('click', async () => {
-  if (S.winds.length <= 1) return;
-  if (!(await ask(`Supprimer le vent « ${S.winds[S.windIdx].name} » ?`))) return;
-  S.winds.splice(S.windIdx, 1); S.windIdx = 0; renderWinds(); changed();
-});
+// v0.7.1 : boutons « Enregistrer sous… » / « Supprimer ce vent » retirés (Henri veut enregistrer la configuration complète, menu Configs)
 function renderSheet() { renderParas(); fillInputs(); renderWinds(); }
 document.querySelectorAll('th[data-picto]').forEach(th => th.insertAdjacentHTML('afterbegin', pictoSVG(th.dataset.picto, 26)));
 function syncSummary() {
