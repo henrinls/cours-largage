@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.6.2';
+const VERSION = '0.7.0';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -362,7 +362,51 @@ document.querySelectorAll('.tabs [data-tab]').forEach(b => b.addEventListener('c
   document.querySelectorAll('.tabs [data-tab]').forEach(x => x.classList.toggle('on', x === b));
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('hidden', t.id !== 'tab-' + b.dataset.tab));
 }));
-function changed(keepTime) { save(); simulate(); if (!keepTime) { tNow = 0; playing = false; } else tNow = Math.min(tNow, SIM.tEnd); draw(); syncCtrl(); syncSummary(); }
+// ---------- Configurations enregistrées (menu sous le bouton Largage) ----------
+// Une configuration = paras (ordre et types), vent (nom + valeurs), sens, vitesse, hauteur, temps entre sorties (ou Auto)
+if (!Array.isArray(S.configs)) S.configs = [];
+let cfgLoaded = null; // nom de la configuration chargée, tant qu'on n'a rien modifié
+function renderConfigs() {
+  const sel = $('cfgSel'); sel.innerHTML = '';
+  const add = (v, t, dis) => { const o = document.createElement('option'); o.value = v; o.textContent = t; if (dis) o.disabled = true; sel.append(o); };
+  add('', 'Configs', false); // libellé court : « Configurations » ne tenait pas sur l'iPhone
+  S.configs.forEach((c, i) => add('c' + i, c.name));
+  add('sep', '──────────', true);
+  add('save', '＋ Enregistrer la configuration actuelle…');
+  if (cfgLoaded != null) add('del', `🗑 Supprimer « ${cfgLoaded} »`);
+  const i = S.configs.findIndex(c => c.name === cfgLoaded); sel.value = i >= 0 ? 'c' + i : '';
+}
+function currentConfig(name) {
+  const w = S.winds[S.windIdx] || S.winds[0];
+  return { name, paras: clone(S.paras), wind: { name: w.name, w: w.w.slice() }, dir: S.dir, speed: S.speed, height: S.height, sep: S.sep };
+}
+function loadConfig(c) {
+  S.paras = clone(c.paras); S.dir = c.dir; S.speed = c.speed; S.height = c.height; S.sep = c.sep;
+  let j = S.winds.findIndex(w => w.name === c.wind.name && w.w.join() === c.wind.w.join());
+  if (j < 0) j = S.winds.findIndex(w => w.name === c.wind.name);
+  if (j < 0) { S.winds.push(clone(c.wind)); j = S.winds.length - 1; } else S.winds[j].w = c.wind.w.slice(); // le vent tel qu'il était enregistré
+  S.windIdx = j; changed(); cfgLoaded = c.name; renderConfigs();
+  if (!$('sheet').classList.contains('hidden')) renderSheet();
+}
+$('cfgSel').addEventListener('change', async e => {
+  const v = e.target.value;
+  if (v[0] === 'c') { loadConfig(S.configs[+v.slice(1)]); toast(`Configuration « ${cfgLoaded} »`); return; }
+  if (v === 'save') {
+    renderConfigs();
+    const n = await ask('Nom de cette configuration (ex. « FF devant les VR, vent fort ») :', cfgLoaded || ''); if (!n) return;
+    const k = S.configs.findIndex(c => c.name === n);
+    if (k >= 0 && !(await ask(`« ${n} » existe déjà : la remplacer ?`))) return;
+    if (k >= 0) S.configs[k] = currentConfig(n); else S.configs.push(currentConfig(n));
+    save(); cfgLoaded = n; renderConfigs(); toast('Configuration enregistrée'); return;
+  }
+  if (v === 'del') {
+    const n = cfgLoaded; renderConfigs();
+    if (!(await ask(`Supprimer la configuration « ${n} » ?`))) return;
+    S.configs = S.configs.filter(c => c.name !== n); save(); cfgLoaded = null; renderConfigs(); toast('Configuration supprimée'); return;
+  }
+  renderConfigs();
+});
+function changed(keepTime) { if (!keepTime) cfgLoaded = null; save(); simulate(); if (!keepTime) { tNow = 0; playing = false; } else tNow = Math.min(tNow, SIM.tEnd); draw(); syncCtrl(); syncSummary(); renderConfigs(); }
 
 function renderParas() {
   const ul = $('paraList'); ul.innerHTML = '';
@@ -467,7 +511,9 @@ document.querySelectorAll('th[data-picto]').forEach(th => th.insertAdjacentHTML(
 function syncSummary() {
   if (!SIM) return;
   // v0.5.5 : plus de résumé en haut, un bouton « Sens de largage » avec une flèche dans le sens de vol de l'avion ; appui = changer de sens
-  const ic = `<span>Sens de largage</span><svg viewBox="0 0 60 14" width="72" height="17"><path d="${S.dir === 'R' ? 'M4 7H55M47 1.5L55 7L47 12.5' : 'M56 7H5M13 1.5L5 7L13 12.5'}" fill="none" stroke="#4fc3f7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const fl = S.dir === 'R' ? 1 : -1; // v0.7.0 : un avion (pointé dans le sens de vol) au-dessus de la flèche, plus de texte
+  const ic = `<svg viewBox="-20 -10 40 20" width="58" height="29"><g transform="scale(${fl},1)" stroke="#000" stroke-width="1" fill="#e8e8e8"><path d="M16 0L9 -3L-12 -3L-16 -9L-19 -9L-17 -2L-17 2L9 3Z"/><path fill="#bbb" d="M2 0L-4 9L-8 9L-5 0Z"/></g></svg>` +
+    `<svg viewBox="0 0 60 14" width="72" height="17"><path d="${S.dir === 'R' ? 'M4 7H55M47 1.5L55 7L47 12.5' : 'M56 7H5M13 1.5L5 7L13 12.5'}" fill="none" stroke="#4fc3f7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   if ($('bDir').dataset.dir !== S.dir) { $('bDir').innerHTML = ic; $('bDir').dataset.dir = S.dir; $('bDir').title = S.dir === 'R' ? 'Face au vent (appuyer pour vent dans le dos)' : 'Vent dans le dos (appuyer pour face au vent)'; }
   if (!$('sheet').classList.contains('hidden')) { renderWinds(); fillInputs(); } // Auto suit le vent : temps entre sorties à jour
 }
@@ -490,7 +536,7 @@ document.addEventListener('focusout', () => setTimeout(() => window.scrollTo(0, 
 
 // ---------- Démarrage ----------
 $('ver').textContent = VERSION;
-simulate(); resize(); syncCtrl(); syncSummary();
+simulate(); resize(); syncCtrl(); syncSummary(); renderConfigs();
 window.addEventListener('resize', () => setTimeout(resize, 120));
 requestAnimationFrame(frame);
 
