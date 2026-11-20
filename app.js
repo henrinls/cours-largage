@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.8.0';
+const VERSION = '0.8.1';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -119,8 +119,8 @@ function windAt(z) {
   return -(+W[i] || 0);
 }
 let SIM = null;
-// v0.8.0 : « largage optimisé » (bouton sous le temps) : pour chaque couple de paras qui se suivent, le plus petit temps entre
-// les deux sorties (en secondes entières) qui évite tout rouge entre eux ; sinon largage uniforme (même temps pour tous)
+// v0.8.0 : « largage optimisé » (bouton sous le temps) : pour chaque couple de paras qui se suivent, le temps entre les deux sorties
+// allongé juste assez (secondes entières) pour éviter tout rouge entre eux — jamais moins que le largage uniforme
 function simulate() {
   SIM = simCore(S.paras, S.opt ? optimizeGaps() : null);
   bounds();
@@ -129,8 +129,10 @@ function optimizeGaps() {
   const n = S.paras.length, gaps = [];
   for (let i = 0; i + 1 < n; i++) {
     const sub = S.paras.slice(0, i + 2), ok = g => { const r = simCore(sub, gaps.concat([g])); return !r.close.some(c => c.i === i); };
-    let best = 120;
-    for (let g = 1; g <= 120; g++) if (ok(g) && ok(g + 1)) { best = g; break; } // deux valeurs de suite sans rouge (pas de coup de chance)
+    // v0.8.1 (Henri) : on ne réduit JAMAIS : on part du temps du largage uniforme et on allonge seulement si ce couple passe au rouge
+    const g0 = Math.max(1, Math.round(sepNow()));
+    let best = Math.max(g0, 120);
+    for (let g = g0; g <= 120; g++) if (ok(g) && ok(g + 1)) { best = g; break; } // deux valeurs de suite sans rouge (pas de coup de chance)
     gaps.push(best);
   }
   return gaps;
