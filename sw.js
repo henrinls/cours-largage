@@ -1,5 +1,5 @@
 // Service worker : appli disponible hors-ligne (réseau d'abord pour recevoir les mises à jour, sinon le cache).
-const APP_CACHE = 'cl-app-v0.1.0';
+const APP_CACHE = 'cl-app-v0.2.0';
 const APP_FILES = ['./', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(APP_CACHE).then(c => c.addAll(APP_FILES.map(f => new Request(f, { cache: 'reload' })))).then(() => self.skipWaiting()));
