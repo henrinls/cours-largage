@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.5.4';
+const VERSION = '0.5.5';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -407,6 +407,7 @@ function fillInputs() {
 $('sepAuto').addEventListener('click', () => { S.sep = null; fillInputs(); changed(); });
 $('dirL').addEventListener('click', () => { S.dir = 'L'; fillInputs(); changed(); });
 $('dirR').addEventListener('click', () => { S.dir = 'R'; fillInputs(); changed(); });
+$('bDir').addEventListener('click', () => { S.dir = S.dir === 'R' ? 'L' : 'R'; fillInputs(); changed(); });
 $('resetParams').addEventListener('click', async () => {
   if (!(await ask('Remettre les paramètres des chuteurs, sous voile et d\'affichage aux valeurs par défaut ?'))) return;
   ['vz', 'openLoss', 'gap', 'redGap', 'dot', 'play'].forEach(k => { S[k] = DEF[k]; }); S.types = clone(DEF.types); fillInputs(); changed();
@@ -444,7 +445,9 @@ function renderSheet() { renderParas(); fillInputs(); renderWinds(); }
 document.querySelectorAll('th[data-picto]').forEach(th => th.insertAdjacentHTML('afterbegin', pictoSVG(th.dataset.picto, 26)));
 function syncSummary() {
   if (!SIM) return;
-  $('summary').innerHTML = `${S.paras.length} para${S.paras.length > 1 ? 's' : ''} · ${fmtInt(S.speed)} kt · ${SIM.sep} s entre sorties<br>${S.dir === 'R' ? 'face au vent →' : '← vent dans le dos'} · ${S.winds[S.windIdx].name}`;
+  // v0.5.5 : plus de résumé en haut, un bouton « Sens de largage » avec une flèche dans le sens de vol de l'avion ; appui = changer de sens
+  const ic = `<span>Sens de largage</span><svg viewBox="0 0 60 14" width="72" height="17"><path d="${S.dir === 'R' ? 'M4 7H55M47 1.5L55 7L47 12.5' : 'M56 7H5M13 1.5L5 7L13 12.5'}" fill="none" stroke="#4fc3f7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  if ($('bDir').dataset.dir !== S.dir) { $('bDir').innerHTML = ic; $('bDir').dataset.dir = S.dir; $('bDir').title = S.dir === 'R' ? 'Face au vent (appuyer pour vent dans le dos)' : 'Vent dans le dos (appuyer pour face au vent)'; }
   if (!$('sheet').classList.contains('hidden')) { renderWinds(); fillInputs(); } // Auto suit le vent : temps entre sorties à jour
 }
 
