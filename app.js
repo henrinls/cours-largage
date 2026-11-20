@@ -2,7 +2,7 @@
 // Vue de profil : l'avion en haut, le sol en bas ; trajectoires gardées en pointillés, points numérotés à intervalle
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins de l'écart voulu (300 m) → en rouge.
 'use strict';
-const VERSION = '0.3.0';
+const VERSION = '0.3.1';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -45,7 +45,10 @@ function save() { store.set('cl.state', S); }
 const num = v => { const x = parseFloat(String(v).replace(',', '.')); return isFinite(x) ? x : NaN; };
 const fmt1 = v => (Math.round(v * 10) / 10).toString().replace('.', ',');
 const fmtInt = v => Math.round(v).toLocaleString('fr-FR');
-const autoSep = () => Math.ceil((+S.gap || 300) / Math.max(1, (+S.speed || 70) * KT) - 1e-9);
+// Auto : temps entre sorties pour avoir l'écart voulu AU SOL au moment de sortir, avec le vent à la hauteur de largage
+// (vitesse sol de l'avion = vitesse propre ± vent de la tranche du haut) ; plafonné à 60 s si le vent de face est énorme
+const groundSpeed = () => Math.abs((S.dir === 'R' ? 1 : -1) * (+S.speed || 70) * KT + windAt((+S.height || 4000) - 1));
+const autoSep = () => Math.min(60, Math.ceil((+S.gap || 300) / Math.max(1, groundSpeed()) - 1e-9));
 const sepNow = () => (S.sep == null || !(S.sep > 0)) ? autoSep() : +S.sep;
 
 // ---------- Physique ----------
@@ -346,7 +349,9 @@ reg('p_play', () => S.play, v => { S.play = Math.max(0.2, v); }, true);
 function fillInputs() {
   inputs.forEach(id => { const el = $(id); if (document.activeElement !== el) el.value = fmt1(el._get()); });
   $('sepAuto').classList.toggle('primary', S.sep == null);
-  $('sepHint').textContent = `Auto : ${autoSep()} s = ${fmtInt(+S.gap || 300)} m à ${fmtInt(S.speed)} kt, sans vent`;
+  const head = -(S.dir === 'R' ? 1 : -1) * windAt((+S.height || 4000) - 1); // > 0 : vent de face à la hauteur de largage
+  const wTxt = Math.abs(head) < 0.05 ? 'sans vent' : `vent ${head > 0 ? 'de face' : 'arrière'} ${fmt1(Math.abs(head))} m/s`;
+  $('sepHint').textContent = `Auto : ${autoSep()} s = ${fmtInt(+S.gap || 300)} m à ${fmtInt(groundSpeed() / KT)} kt sol (${fmtInt(S.speed)} kt, ${wTxt})`;
   $('dirL').classList.toggle('on', S.dir !== 'R'); $('dirR').classList.toggle('on', S.dir === 'R');
 }
 $('sepAuto').addEventListener('click', () => { S.sep = null; fillInputs(); changed(); });
@@ -389,7 +394,7 @@ function renderSheet() { renderParas(); fillInputs(); renderWinds(); }
 function syncSummary() {
   if (!SIM) return;
   $('summary').innerHTML = `${S.paras.length} para${S.paras.length > 1 ? 's' : ''} · ${fmtInt(S.speed)} kt · ${SIM.sep} s entre sorties<br>${S.dir === 'R' ? 'face au vent →' : '← vent dans le dos'} · ${S.winds[S.windIdx].name}`;
-  if (!$('sheet').classList.contains('hidden')) renderWinds();
+  if (!$('sheet').classList.contains('hidden')) { renderWinds(); fillInputs(); } // Auto suit le vent : temps entre sorties à jour
 }
 
 // ---------- Boîte de dialogue et messages ----------
