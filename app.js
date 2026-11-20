@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.6.1';
+const VERSION = '0.6.2';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -197,7 +197,9 @@ function bounds() {
   const top = $('top').getBoundingClientRect().bottom + 34, bot = $('scrub').getBoundingClientRect().top - 22, left = 50, right = W - 14;
   // bas de la vue : un peu sous l'ouverture la plus basse (l'animation s'arrête quand le dernier a ouvert : pas besoin du sol)
   let zMin = Infinity; SIM.paras.forEach(p => p.track.forEach(q => { if (q.t <= SIM.tEnd) zMin = Math.min(zMin, q.z); }));
-  const z0 = Math.max(0, Math.floor(((isFinite(zMin) ? zMin : 0) - 200) / 250) * 250);
+  let z0 = Math.max(0, Math.floor(((isFinite(zMin) ? zMin : 0) - 200) / 250) * 250);
+  // v0.6.2 : au moins 72 px sous le para le plus bas pour la ligne des distances de la fin (sinon elle tombait sur l'échelle)
+  const kk = 72 / Math.max(100, bot - top); if (isFinite(zMin)) z0 = Math.min(z0, (zMin - kk * SIM.H) / (1 - kk));
   view = { x0, x1, left, right, top, bot, z0, sx: (right - left) / (x1 - x0), sy: (bot - top) / (SIM.H - z0) };
 }
 const X = x => view.left + (x - view.x0) * view.sx;
@@ -211,7 +213,7 @@ function draw() {
   const H = SIM.H;
   // Graduations de hauteur
   g.font = '11px -apple-system, Helvetica, Arial, sans-serif'; g.textAlign = 'right'; g.textBaseline = 'middle';
-  for (let z = Math.ceil(view.z0 / 500) * 500; z <= H + 1; z += 500) {
+  for (let z = Math.max(0, Math.ceil(view.z0 / 500) * 500); z <= H + 1; z += 500) {
     const y = Y(z); g.strokeStyle = z % 1000 === 0 ? '#2e2e2e' : '#222'; g.lineWidth = 1; g.beginPath(); g.moveTo(view.left, y); g.lineTo(view.right, y); g.stroke();
     if (z % 1000 === 0) { g.fillStyle = '#888'; g.fillText(`${fmtInt(z)} m`, view.left - 6, y); }
   }
@@ -249,8 +251,12 @@ function draw() {
   const minByPair = new Map();
   SIM.close.forEach(c => { if (c.t > tNow + 1e-6) return; redSet.add(c.k + ':' + c.i); redSet.add(c.k + ':' + (c.i + 1)); const m = minByPair.get(c.i); if (!m || c.d < m.d) minByPair.set(c.i, c); });
   const meas = []; // dessinées APRÈS les points et les paras, sur fond sombre, pour rester lisibles sous les voiles
-  minByPair.forEach(c => meas.push([c, '#ff5a5a']));
-  if (cur) cur.pairs.forEach(c => { const m = minByPair.get(c.i); if (m && (m.k === c.k || Math.abs(m.d - c.d) < 5)) return; /* pas deux fois la même mesure */ meas.push([c, c.red ? '#ff5a5a' : '#c8c8c8']); });
+  // v0.6.2 : à la fin, TOUTES les distances entre paras qui se suivent, sous les paras, sur une même ligne (rouges si < seuil),
+  // même si c'est la même valeur que le rouge plus haut ; le rouge « plus petite valeur » reste à l'endroit où il a eu lieu
+  const isEnd = cur && cur.last, lastK = isEnd ? cur.k : -1;
+  minByPair.forEach(c => { if (c.k !== lastK) meas.push([c, '#ff5a5a']); });
+  if (cur) cur.pairs.forEach(c => meas.push([c, c.red ? '#ff5a5a' : '#c8c8c8']));
+  const endY = isEnd ? Math.max(...cur.pos.filter(Boolean).map(q => Y(q.z))) + 24 : 0; // la ligne commune, sous le para le plus bas
   // Points numérotés (même numéro = même instant)
   SIM.samples.forEach(s => {
     if (s.t > tNow + 1e-6) return;
@@ -268,7 +274,7 @@ function draw() {
     const c = posAt(p, tNow); if (!c) return;
     drawPara(X(c.x), Y(c.z), p, c.ph);
   });
-  const placed = []; meas.forEach(([c, col]) => hMeasure(c, col, placed));
+  const placed = []; meas.forEach(([c, col]) => hMeasure(c, col, placed, c.k === lastK ? endY : null));
   // Échelle
   const ratio = view.sy > 0 ? view.sx / view.sy : 1;
   const bar = [100, 200, 500, 1000, 2000].find(v => v * view.sx > 60) || 2000;
@@ -279,9 +285,9 @@ function draw() {
 // Écart horizontal : trait horizontal (à mi-hauteur des deux points) avec deux petites barres, et la distance au-dessus
 // À la fin (l'appli se fige à l'ouverture du dernier) : trait et distance EN DESSOUS des deux paras (demande d'Henri),
 // pour ne pas tomber sur les voiles, les pictogrammes et les numéros ; sinon à mi-hauteur entre les deux points
-function hMeasure(c, col, placed) {
-  const below = SIM.samples.length && c.k === SIM.samples[SIM.samples.length - 1].k;
-  const ax = X(c.a.x), bx = X(c.b.x), ya = Y(c.a.z), yb = Y(c.b.z), y = below ? Math.max(ya, yb) + 22 : (ya + yb) / 2;
+function hMeasure(c, col, placed, lineY) {
+  const below = lineY != null;
+  const ax = X(c.a.x), bx = X(c.b.x), ya = Y(c.a.z), yb = Y(c.b.z), y = below ? lineY : (ya + yb) / 2;
   g.save(); g.strokeStyle = col; g.globalAlpha = .85; g.lineWidth = 1;
   g.setLineDash([2, 3]); g.beginPath(); g.moveTo(ax, ya); g.lineTo(ax, y); g.moveTo(bx, yb); g.lineTo(bx, y); g.stroke(); g.setLineDash([]);
   g.beginPath(); g.moveTo(ax, y); g.lineTo(bx, y); g.moveTo(ax, y - 4); g.lineTo(ax, y + 4); g.moveTo(bx, y - 4); g.lineTo(bx, y + 4); g.stroke(); g.restore();
