@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.5.5';
+const VERSION = '0.6.0';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -239,15 +239,18 @@ function draw() {
     const c = posAt(p, tNow); if (c) g.lineTo(X(c.x), Y(c.z));
     g.stroke(); g.setLineDash([]);
   });
-  // Écarts horizontaux entre paras qui se suivent : en rouge (moins de l'écart voulu) seule la plus petite est écrite ; en gris
-  // (écart suffisant) seulement ceux du dernier point atteint, effacés au point suivant ; à la fin, ceux de l'ouverture du dernier
+  // Écarts horizontaux entre paras qui se suivent (v0.6.0, demande d'Henri) :
+  // - rouge : pour CHAQUE couple de paras (1-2, 2-3…), la plus petite distance sous le seuil atteinte jusqu'ici (rien si le couple
+  //   est toujours resté au-dessus) ; les points trop proches restent en rouge ;
+  // - gris : les écarts du dernier point atteint (effacés au point suivant) ;
+  // - à la fin (ouverture du dernier, l'appli se fige) : les écarts de TOUS les couples à ce moment-là, en plus des rouges.
   const redSet = new Set();
   let cur = null; SIM.samples.forEach(s => { if (s.t <= tNow + 1e-6) cur = s; });
-  // Rouge : tous les points trop proches restent en rouge, mais UNE seule distance rouge écrite, la plus petite (sinon illisible)
-  let minC = null;
-  SIM.close.forEach(c => { if (c.t > tNow + 1e-6) return; redSet.add(c.k + ':' + c.i); redSet.add(c.k + ':' + (c.i + 1)); if (!minC || c.d < minC.d) minC = c; });
-  if (minC) hMeasure(minC, '#ff5a5a');
-  if (cur) cur.pairs.forEach(c => { if (!c.red) hMeasure(c, '#c8c8c8'); });
+  const minByPair = new Map();
+  SIM.close.forEach(c => { if (c.t > tNow + 1e-6) return; redSet.add(c.k + ':' + c.i); redSet.add(c.k + ':' + (c.i + 1)); const m = minByPair.get(c.i); if (!m || c.d < m.d) minByPair.set(c.i, c); });
+  const meas = []; // dessinées APRÈS les points et les paras, sur fond sombre, pour rester lisibles sous les voiles
+  minByPair.forEach(c => meas.push([c, '#ff5a5a']));
+  if (cur) cur.pairs.forEach(c => { const m = minByPair.get(c.i); if (m && (m.k === c.k || Math.abs(m.d - c.d) < 5)) return; /* pas deux fois la même mesure */ meas.push([c, c.red ? '#ff5a5a' : '#c8c8c8']); });
   // Points numérotés (même numéro = même instant)
   SIM.samples.forEach(s => {
     if (s.t > tNow + 1e-6) return;
@@ -265,6 +268,7 @@ function draw() {
     const c = posAt(p, tNow); if (!c) return;
     drawPara(X(c.x), Y(c.z), p, c.ph);
   });
+  const placed = []; meas.forEach(([c, col]) => hMeasure(c, col, placed));
   // Échelle
   const ratio = view.sy > 0 ? view.sx / view.sy : 1;
   const bar = [100, 200, 500, 1000, 2000].find(v => v * view.sx > 60) || 2000;
@@ -273,13 +277,19 @@ function draw() {
   g.fillText(`${fmtInt(bar)} m · largeur ×${fmt1(1 / ratio)}`, view.left + bar * view.sx + 8, view.bot + 14);
 }
 // Écart horizontal : trait horizontal (à mi-hauteur des deux points) avec deux petites barres, et la distance au-dessus
-function hMeasure(c, col) {
+function hMeasure(c, col, placed) {
   const ax = X(c.a.x), bx = X(c.b.x), ya = Y(c.a.z), yb = Y(c.b.z), y = (ya + yb) / 2;
   g.save(); g.strokeStyle = col; g.globalAlpha = .85; g.lineWidth = 1;
   g.setLineDash([2, 3]); g.beginPath(); g.moveTo(ax, ya); g.lineTo(ax, y); g.moveTo(bx, yb); g.lineTo(bx, y); g.stroke(); g.setLineDash([]);
   g.beginPath(); g.moveTo(ax, y); g.lineTo(bx, y); g.moveTo(ax, y - 4); g.lineTo(ax, y + 4); g.moveTo(bx, y - 4); g.lineTo(bx, y + 4); g.stroke(); g.restore();
-  g.font = '700 10px -apple-system, Helvetica, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'bottom';
-  outlined(`${Math.round(c.d)} m`, (ax + bx) / 2, y - 3, col);
+  g.font = '700 11px -apple-system, Helvetica, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'bottom';
+  const t = `${Math.round(c.d)} m`, w = g.measureText(t).width, cx = (ax + bx) / 2;
+  let ly = y - 3; // les étiquettes ne se chevauchent pas : on remonte celle qui tomberait sur une autre
+  const hit = yy => (placed || []).some(b => cx - w / 2 - 3 < b.x2 && cx + w / 2 + 3 > b.x1 && yy - 13 < b.y2 && yy + 1 > b.y1);
+  for (let n = 0; n < 8 && hit(ly); n++) ly -= 15;
+  if (placed) placed.push({ x1: cx - w / 2 - 3, x2: cx + w / 2 + 3, y1: ly - 13, y2: ly + 1 });
+  g.fillStyle = 'rgba(17,17,17,.85)'; g.fillRect(cx - w / 2 - 3, ly - 13, w + 6, 14);
+  outlined(t, cx, ly, col);
 }
 function outlined(txt, x, y, col) { g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,.85)'; g.lineJoin = 'round'; g.strokeText(txt, x, y); g.fillStyle = col; g.fillText(txt, x, y); }
 function drawPlane(x, y, dir) {
@@ -313,7 +323,9 @@ function frame(ts) {
 }
 // Barre d'avancement : avance pendant la lecture ; on la fait glisser pour revenir en arrière ou avancer, et au relâché c'est en pause
 const scrub = $('scrub');
-scrub.addEventListener('input', () => { playing = false; tNow = Math.max(0, Math.min(SIM ? SIM.tEnd : 0, +scrub.value)); draw(); syncCtrl(); });
+// barre tirée au bout : on se cale exactement sur la fin (le pas de 0,1 s de la barre tombait juste avant, et les distances
+// de l'ouverture ne s'affichaient pas)
+scrub.addEventListener('input', () => { playing = false; const e = SIM ? SIM.tEnd : 0, v = +scrub.value; tNow = v >= e - 0.15 ? e : Math.max(0, Math.min(e, v)); draw(); syncCtrl(); });
 let scrubbing = false;
 scrub.addEventListener('pointerdown', () => { scrubbing = true; playing = false; syncCtrl(); });
 ['pointerup', 'pointercancel', 'change'].forEach(ev => scrub.addEventListener(ev, () => { scrubbing = false; playing = false; syncCtrl(); })); // relâché : pause
