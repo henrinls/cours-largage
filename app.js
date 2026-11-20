@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.5.1';
+const VERSION = '0.5.2';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -36,9 +36,10 @@ const PICTO = {
 PICTO.eleve = PICTO.plat;
 const PATHS = {};
 // Version HTML (liste des paras, tableau) : couleur du texte ; l'élève a un E au-dessus
+// Toujours la place du E réservée (même pour vertical et à plat) : le bouton ne change pas de taille quand on change de type
 function pictoSVG(type, size) {
   const p = PICTO[type] || PICTO.plat, e = type === 'eleve';
-  return `<svg class="picto" viewBox="0 ${e ? -9 : 0} 24 ${e ? 33 : 24}" width="${size}" height="${size * (e ? 33 : 24) / 24}" aria-label="${TYPE_NAMES[type]}">` +
+  return `<svg class="picto" viewBox="0 -9 24 33" width="${size}" height="${size * 33 / 24}" aria-label="${TYPE_NAMES[type]}">` +
     (e ? '<text x="12" y="-1" text-anchor="middle" font-size="10" font-weight="800" fill="currentColor" font-family="-apple-system,Helvetica,Arial,sans-serif">E</text>' : '') +
     `<path d="${p.d}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>` +
     `<circle cx="${p.head[0]}" cy="${p.head[1]}" r="${p.r}" fill="currentColor"/></svg>`;
