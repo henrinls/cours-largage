@@ -3,20 +3,20 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.4.0';
+const VERSION = '0.4.1';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
 // ---------- Réglages ----------
 const DEF = {
   speed: 70, height: 4000, sep: null /* null = auto */, dir: 'R' /* le vent va vers la gauche : vers la droite = face au vent */, gap: 300, redGap: 250, dot: 5, play: 5,
-  vz: 4, vzMon: 8, openLoss: 100,
+  vz: 4, openLoss: 100,
   types: {
     vertical: { vt: 75, d10: 450, hOpen: 1000 },
     plat: { vt: 50, d10: 300, hOpen: 1000 },
     eleve: { vt: 50, d10: 300, hOpen: 1500 }
   },
-  paras: [{ type: 'plat', mon: false }, { type: 'plat', mon: false }, { type: 'eleve', mon: false }],
+  paras: [{ type: 'plat' }, { type: 'plat' }, { type: 'eleve' }],
   winds: [
     { name: 'Vent nul', w: [0, 0, 0, 0] },
     { name: 'Vent constant 4 m/s', w: [4, 4, 4, 4] },
@@ -50,6 +50,7 @@ if (!S.windsV2) {
   const j = S.winds.findIndex(w => w.name === cur); S.windIdx = j >= 0 ? j : 0; S.windsV2 = true;
 }
 if (!(+S.redGap > 0)) S.redGap = DEF.redGap;
+S.paras.forEach(p => delete p.mon); delete S.vzMon;
 function save() { store.set('cl.state', S); }
 
 const num = v => { const x = parseFloat(String(v).replace(',', '.')); return isFinite(x) ? x : NaN; };
@@ -83,7 +84,7 @@ function simulate() {
   const dt = 0.05, L = Math.max(1, +S.openLoss || 100);
   const paras = S.paras.map((p, i) => {
     const ty = S.types[p.type] || S.types.plat, vt = Math.max(5, +ty.vt || 50), T = calibT(vt, Math.max(1, +ty.d10 || 300));
-    const hOpen = Math.min(H - 10, Math.max(50, +ty.hOpen || 1000)), vzC = p.mon && p.type !== 'eleve' ? (+S.vzMon || 8) : (+S.vz || 4);
+    const hOpen = Math.min(H - 10, Math.max(50, +ty.hOpen || 1000)), vzC = +S.vz || 4; // v0.4.1 : option moniteur supprimée (l'appli s'arrête à l'ouverture du dernier : pas de sous voile à montrer)
     const te = i * sep, k = G / (vt * vt);
     let t = 0, x = vpg * te, z = H, u = dir * Va, phase = 'ff', tO = 0, vOpen = 0, tp = 0, tOpenStart = null, tOpenEnd = null;
     const track = [{ t: te, x, z, ph: 'ff' }];
@@ -103,7 +104,7 @@ function simulate() {
       x += (u + windAt(z)) * dt; t += dt;
       if (n % 5 === 4 || z <= 0) track.push({ t: te + t, x, z: Math.max(0, z), ph: phase }); // un point toutes les 0,25 s
     }
-    return { i, type: p.type, mon: !!p.mon && p.type !== 'eleve', te, track, tOpenStart, tOpenEnd, color: COLORS[i % COLORS.length], hOpen };
+    return { i, type: p.type, te, track, tOpenStart, tOpenEnd, color: COLORS[i % COLORS.length], hOpen };
   });
   // Fin = ouverture du dernier para (Henri : le dernier point est le point d'ouverture du dernier para)
   const tEnd = paras.length ? Math.max(...paras.map(p => p.tOpenStart != null ? p.tOpenStart : p.te)) : 10;
@@ -256,7 +257,7 @@ function drawPara(x, y, p, ph) {
   g.font = '700 9px -apple-system, Helvetica, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#000';
   g.fillText(String(p.i + 1), x, y + 0.5);
   g.font = '700 10px -apple-system, Helvetica, Arial, sans-serif'; g.textAlign = 'right';
-  outlined(TYPE_LETTER[p.type] + (p.mon ? 'm' : ''), x - 9, y, p.color);
+  outlined(TYPE_LETTER[p.type], x - 9, y, p.color);
 }
 
 // ---------- Animation : lecture / pause (un seul bouton), stop ; le ralenti se fait avec la barre d'avancement ----------
@@ -308,9 +309,8 @@ function renderParas() {
   S.paras.forEach((p, i) => {
     const li = document.createElement('li'); li.dataset.i = i;
     li.innerHTML = `<span class="hdl">≡</span><span class="num" style="color:${COLORS[i % COLORS.length]}">${i + 1}</span>
-      <button class="type">${TYPE_NAMES[p.type]}</button><button class="mon ${p.mon && p.type !== 'eleve' ? 'on' : ''}" ${p.type === 'eleve' ? 'disabled' : ''}>Moniteur</button><button class="del" title="Retirer">✕</button>`;
-    li.querySelector('.type').onclick = () => { p.type = NEXT_TYPE[p.type] || 'plat'; if (p.type === 'eleve') p.mon = false; renderParas(); changed(); };
-    li.querySelector('.mon').onclick = () => { p.mon = !p.mon; renderParas(); changed(); };
+      <button class="type">${TYPE_NAMES[p.type]}</button><button class="del" title="Retirer">✕</button>`;
+    li.querySelector('.type').onclick = () => { p.type = NEXT_TYPE[p.type] || 'plat'; renderParas(); changed(); };
     li.querySelector('.del').onclick = () => { S.paras.splice(i, 1); renderParas(); changed(); };
     dragHandle(li.querySelector('.hdl'), li);
     ul.append(li);
@@ -335,7 +335,7 @@ function dragHandle(h, li) {
     h.addEventListener('pointermove', move); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
   });
 }
-$('addPara').addEventListener('click', () => { S.paras.push({ type: 'plat', mon: false }); renderParas(); changed(); });
+$('addPara').addEventListener('click', () => { S.paras.push({ type: 'plat' }); renderParas(); changed(); });
 $('clearParas').addEventListener('click', async () => { if (await ask('Retirer tous les paras ?')) { S.paras = []; renderParas(); changed(); } });
 
 function bindNum(id, get, set, keepTime) {
@@ -350,7 +350,6 @@ reg('p_speed', () => S.speed, v => { S.speed = Math.max(20, v); });
 reg('p_height', () => S.height, v => { S.height = Math.max(1600, v); });
 reg('p_sep', () => sepNow(), v => { S.sep = Math.max(1, v); });
 reg('p_vz', () => S.vz, v => { S.vz = Math.max(1, v); });
-reg('p_vzMon', () => S.vzMon, v => { S.vzMon = Math.max(1, v); });
 reg('p_openLoss', () => S.openLoss, v => { S.openLoss = Math.max(10, v); });
 reg('p_gap', () => S.gap, v => { S.gap = Math.max(10, v); });
 reg('p_redGap', () => S.redGap, v => { S.redGap = Math.max(10, v); });
@@ -370,7 +369,7 @@ $('dirL').addEventListener('click', () => { S.dir = 'L'; fillInputs(); changed()
 $('dirR').addEventListener('click', () => { S.dir = 'R'; fillInputs(); changed(); });
 $('resetParams').addEventListener('click', async () => {
   if (!(await ask('Remettre les paramètres des chuteurs, sous voile et d\'affichage aux valeurs par défaut ?'))) return;
-  ['vz', 'vzMon', 'openLoss', 'gap', 'redGap', 'dot', 'play'].forEach(k => { S[k] = DEF[k]; }); S.types = clone(DEF.types); fillInputs(); changed();
+  ['vz', 'openLoss', 'gap', 'redGap', 'dot', 'play'].forEach(k => { S[k] = DEF[k]; }); S.types = clone(DEF.types); fillInputs(); changed();
 });
 
 // Vents enregistrés : une liste de profils (4 tranches) pour montrer ce qu'on veut en cours
