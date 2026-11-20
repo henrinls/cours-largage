@@ -2,13 +2,13 @@
 // Vue de profil : l'avion en haut, le sol en bas ; trajectoires gardées en pointillés, points numérotés à intervalle
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins de l'écart voulu (300 m) → en rouge.
 'use strict';
-const VERSION = '0.2.1';
+const VERSION = '0.2.2';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
 // ---------- Réglages ----------
 const DEF = {
-  speed: 70, height: 4000, sep: null /* null = auto */, dir: 'L', gap: 300, dot: 5, play: 5,
+  speed: 70, height: 4000, sep: null /* null = auto */, dir: 'R' /* le vent va vers la gauche : vers la droite = face au vent */, gap: 300, dot: 5, play: 5,
   vz: 4, vzMon: 8, openLoss: 100,
   types: {
     vertical: { vt: 75, d10: 450, hOpen: 1000 },
@@ -39,6 +39,7 @@ S.types = Object.assign(clone(DEF.types), S.types || {});
 if (!Array.isArray(S.winds) || !S.winds.length) S.winds = clone(DEF.winds);
 if (!(S.windIdx >= 0 && S.windIdx < S.winds.length)) S.windIdx = 0;
 if (!Array.isArray(S.paras)) S.paras = clone(DEF.paras);
+{ const old = store.get('cl.state', null); if (old && old.dir && !old.dirFix) S.dir = old.dir === 'R' ? 'L' : 'R'; S.dirFix = true; } // v0.2.2 : libellés face au vent / vent dans le dos étaient inversés
 function save() { store.set('cl.state', S); }
 
 const num = v => { const x = parseFloat(String(v).replace(',', '.')); return isFinite(x) ? x : NaN; };
@@ -183,11 +184,14 @@ function draw() {
     const c = posAt(p, tNow); if (c) g.lineTo(X(c.x), Y(c.z));
     g.stroke(); g.setLineDash([]);
   });
-  // Écarts horizontaux entre paras qui se suivent : en rouge (moins de l'écart voulu) ils restent affichés ; en gris
+  // Écarts horizontaux entre paras qui se suivent : en rouge (moins de l'écart voulu) seule la plus petite est écrite ; en gris
   // (écart suffisant) seulement ceux du dernier point atteint, effacés au point suivant ; à la fin, ceux de l'ouverture du dernier
   const redSet = new Set();
   let cur = null; SIM.samples.forEach(s => { if (s.t <= tNow + 1e-6) cur = s; });
-  SIM.close.forEach(c => { if (c.t > tNow + 1e-6) return; redSet.add(c.k + ':' + c.i); redSet.add(c.k + ':' + (c.i + 1)); hMeasure(c, '#ff5a5a'); });
+  // Rouge : tous les points trop proches restent en rouge, mais UNE seule distance rouge écrite, la plus petite (sinon illisible)
+  let minC = null;
+  SIM.close.forEach(c => { if (c.t > tNow + 1e-6) return; redSet.add(c.k + ':' + c.i); redSet.add(c.k + ':' + (c.i + 1)); if (!minC || c.d < minC.d) minC = c; });
+  if (minC) hMeasure(minC, '#ff5a5a');
   if (cur) cur.pairs.forEach(c => { if (!c.red) hMeasure(c, '#c8c8c8'); });
   // Points numérotés (même numéro = même instant)
   SIM.samples.forEach(s => {
@@ -264,7 +268,7 @@ function syncCtrl() {
   $('bPlay').classList.toggle('on', playing && !slowHeld); $('bSlow').classList.toggle('on', slowHeld);
   // texte de longueur constante (toujours une décimale, vitesse toujours affichée) : la ligne du haut ne doit plus sauter
   const tTxt = (Math.round(tNow * 10) / 10).toFixed(1).replace('.', ','), spd = slowHeld ? '×1' : `×${fmt1(+S.play || 5)}`;
-  const txt = SIM ? `t = ${tTxt} s · ${playing ? spd : 'pause'}` : '';
+  const txt = SIM ? `t = ${tTxt} s · ${playing ? spd : '⏸'}` : '';
   if ($('clock').textContent !== txt) $('clock').textContent = txt;
 }
 $('bPlay').addEventListener('click', () => { if (SIM && tNow >= SIM.tEnd) tNow = 0; playing = true; slowHeld = false; syncCtrl(); });
@@ -386,7 +390,7 @@ $('windDelete').addEventListener('click', async () => {
 function renderSheet() { renderParas(); fillInputs(); renderWinds(); }
 function syncSummary() {
   if (!SIM) return;
-  $('summary').innerHTML = `${S.paras.length} para${S.paras.length > 1 ? 's' : ''} · ${fmtInt(S.speed)} kt · ${SIM.sep} s entre sorties<br>${S.dir === 'R' ? 'vent dans le dos →' : '← face au vent'} · ${S.winds[S.windIdx].name}`;
+  $('summary').innerHTML = `${S.paras.length} para${S.paras.length > 1 ? 's' : ''} · ${fmtInt(S.speed)} kt · ${SIM.sep} s entre sorties<br>${S.dir === 'R' ? 'face au vent →' : '← vent dans le dos'} · ${S.winds[S.windIdx].name}`;
   if (!$('sheet').classList.contains('hidden')) renderWinds();
 }
 
