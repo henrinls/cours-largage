@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.11.1';
+const VERSION = '0.12.0';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -203,7 +203,7 @@ function simCore(plist, gaps) {
   if (paras.length) samples.push({ k: samples.length + 1, t: tEnd, lab: 'fin', last: true, pos: paras.map(p => posAt(p, tEnd)) });
   // Écart HORIZONTAL entre paras qui se suivent, à chaque point ; compté seulement quand le second est sorti depuis plus de 10 s
   // (avant, la projection du second rapproche toujours les paras, même pour un largage parfait)
-  const gap = +S.redGap || 250, close = [];
+  const gap = +S.redGap || 250, close = [], redPts = [];
   // v0.7.4 (Henri) : dès que les DEUX paras d'un couple ont ouvert, l'écart de ce couple est figé : plus de mesure ensuite
   // (ni grise ni rouge) ; à la fin, l'écart affiché pour ce couple est celui du moment où le second des deux a ouvert
   const tBoth = i => Math.max(paras[i].tOpenStart != null ? paras[i].tOpenStart : paras[i].te, paras[i + 1].tOpenStart != null ? paras[i + 1].tOpenStart : paras[i + 1].te);
@@ -214,12 +214,14 @@ function simCore(plist, gaps) {
       if (!s.last && s.t > tb + 1e-6) continue;
       const tt = s.last ? Math.min(tb, s.t) : s.t;
       const a = s.last ? posAt(paras[i], tt) : s.pos[i], b = s.last ? posAt(paras[i + 1], tt) : s.pos[i + 1];
-      if (!a || !b || tt - paras[i + 1].te <= 10) continue;
-      const pr = { k: s.k, t: tt, i, a, b, d: Math.abs(a.x - b.x) };
-      pr.red = pr.d < gap; s.pairs.push(pr); if (pr.red) close.push(pr);
+      if (!a || !b) continue;
+      // v0.12.0 (Henri) : l'écart est affiché dès la sortie du second (rouge si trop près, points rouges compris) ; la règle des
+      // 10 s ne sert plus qu'à décider ce qui « compte » : la distance rouge gardée à l'écran, et les calculs Optimisé / règles
+      const pr = { k: s.k, t: tt, i, a, b, d: Math.abs(a.x - b.x), counts: tt - paras[i + 1].te > 10 };
+      pr.red = pr.d < gap; s.pairs.push(pr); if (pr.red) { redPts.push(pr); if (pr.counts) close.push(pr); }
     }
   });
-  return { H, Va, dir, sep, vpg, paras, tEnd, samples, close, lastExit: paras.length ? paras[paras.length - 1].te : 0,
+  return { H, Va, dir, sep, vpg, paras, tEnd, samples, close, redPts, lastExit: paras.length ? paras[paras.length - 1].te : 0,
     gaps: paras.slice(1).map((p, i) => p.te - paras[i].te), opt: !!gaps };
 }
 function posAt(p, t) { // position (x, z) du para à l'instant t, null s'il n'est pas encore sorti
@@ -321,7 +323,8 @@ function draw() {
   const redSet = new Set();
   let cur = null; SIM.samples.forEach(s => { if (s.t <= tNow + 1e-6) cur = s; });
   const minByPair = new Map();
-  SIM.close.forEach(c => { if (c.t > tNow + 1e-6) return; redSet.add(c.k + ':' + c.i); redSet.add(c.k + ':' + (c.i + 1)); const m = minByPair.get(c.i); if (!m || c.d < m.d) minByPair.set(c.i, c); });
+  SIM.redPts.forEach(c => { if (c.t > tNow + 1e-6) return; redSet.add(c.k + ':' + c.i); redSet.add(c.k + ':' + (c.i + 1)); }); // tous les points trop proches en rouge
+  SIM.close.forEach(c => { if (c.t > tNow + 1e-6) return; const m = minByPair.get(c.i); if (!m || c.d < m.d) minByPair.set(c.i, c); }); // distance rouge gardée : après les 10 s
   const meas = []; // dessinées APRÈS les points et les paras, sur fond sombre, pour rester lisibles sous les voiles
   // v0.6.2 : à la fin, TOUTES les distances entre paras qui se suivent, sous les paras, sur une même ligne (rouges si < seuil),
   // même si c'est la même valeur que le rouge plus haut ; le rouge « plus petite valeur » reste à l'endroit où il a eu lieu
