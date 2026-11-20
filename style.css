@@ -72,3 +72,8 @@ label{display:block;font-size:12px;color:#aaa;margin:6px 0 3px}
 
 /* petits écrans (iPhone SE) : la ligne du haut tient sur la largeur */
 @media (max-width:360px){#top{gap:6px}#leftCol{width:7.6em}#clock{font-size:13px}#bDir{padding:6px 4px}#bDir .gap{white-space:normal;text-align:center;line-height:1.15}}
+
+/* v0.8.0 : bouton « Optimisé » sous le temps (en surbrillance quand le largage optimisé est actif) */
+#rightCol{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+#bOpt{font-size:13px;padding:6px 10px;white-space:nowrap}
+#bOpt.on{background:#1f6fb2;border-color:#1f6fb2;color:#fff}

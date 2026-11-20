@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.7.9';
+const VERSION = '0.8.0';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -38,8 +38,8 @@ const PATHS = {};
 // Toujours la place du E réservée (même pour vertical et à plat) : le bouton ne change pas de taille quand on change de type
 function pictoSVG(type, size) {
   const p = PICTO[type] || PICTO.plat, e = type === 'eleve';
-  return `<svg class="picto" viewBox="0 -9 24 33" width="${size}" height="${size * 33 / 24}" aria-label="${TYPE_NAMES[type]}">` +
-    (e ? '<text x="12" y="-1" text-anchor="middle" font-size="10" font-weight="800" fill="currentColor" font-family="-apple-system,Helvetica,Arial,sans-serif">E</text>' : '') +
+  return `<svg class="picto" viewBox="0 0 24 33" width="${size}" height="${size * 33 / 24}" aria-label="${TYPE_NAMES[type]}">` + // v0.8.0 : E SOUS le pictogramme
+    (e ? '<text x="12" y="32.5" text-anchor="middle" font-size="10" font-weight="800" fill="currentColor" font-family="-apple-system,Helvetica,Arial,sans-serif">E</text>' : '') +
     `<path d="${p.d}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>` +
     `<circle cx="${p.head[0]}" cy="${p.head[1]}" r="${p.r}" fill="currentColor"/></svg>`;
 }
@@ -53,7 +53,7 @@ function drawPicto(type, x, y, size, col) {
   g.strokeStyle = col; g.lineWidth = 2.4; g.stroke(path);
   g.beginPath(); g.arc(p.head[0], p.head[1], p.r, 0, Math.PI * 2); g.fillStyle = col; g.fill();
   g.restore();
-  if (type === 'eleve') { g.font = '800 10px -apple-system, Helvetica, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'bottom'; outlined('E', x, y - size / 2 - 1, col); }
+  if (type === 'eleve') { g.font = '800 10px -apple-system, Helvetica, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'top'; outlined('E', x, y + size / 2 + 1, col); } // E sous le pictogramme
 }
 const NEXT_TYPE = { vertical: 'plat', plat: 'eleve', eleve: 'vertical' };
 const COLORS = ['#4fc3f7', '#ffd54f', '#81c784', '#ff8a65', '#ba68c8', '#4db6ac', '#f06292', '#aed581', '#90caf9', '#ffb74d', '#ce93d8', '#80deea'];
@@ -119,14 +119,31 @@ function windAt(z) {
   return -(+W[i] || 0);
 }
 let SIM = null;
+// v0.8.0 : « largage optimisé » (bouton sous le temps) : pour chaque couple de paras qui se suivent, le plus petit temps entre
+// les deux sorties (en secondes entières) qui évite tout rouge entre eux ; sinon largage uniforme (même temps pour tous)
 function simulate() {
+  SIM = simCore(S.paras, S.opt ? optimizeGaps() : null);
+  bounds();
+}
+function optimizeGaps() {
+  const n = S.paras.length, gaps = [];
+  for (let i = 0; i + 1 < n; i++) {
+    const sub = S.paras.slice(0, i + 2), ok = g => { const r = simCore(sub, gaps.concat([g])); return !r.close.some(c => c.i === i); };
+    let best = 120;
+    for (let g = 1; g <= 120; g++) if (ok(g) && ok(g + 1)) { best = g; break; } // deux valeurs de suite sans rouge (pas de coup de chance)
+    gaps.push(best);
+  }
+  return gaps;
+}
+function simCore(plist, gaps) {
   const H = +S.height || 4000, Va = (+S.speed || 70) * KT, dir = S.dir === 'R' ? 1 : -1, sep = sepNow();
+  const teOf = i => gaps ? gaps.slice(0, i).reduce((a, b) => a + b, 0) : i * sep;
   const vpg = dir * Va + windAt(H - 1); // vitesse sol de l'avion à la hauteur de largage
   const dt = 0.05, L = Math.max(1, +S.openLoss || 100);
-  const paras = S.paras.map((p, i) => {
+  const paras = plist.map((p, i) => {
     const ty = S.types[p.type] || S.types.plat, vt = Math.max(5, +ty.vt || 50), T = calibT(vt, Math.max(1, +ty.d10 || 300));
     const hOpen = Math.min(H - 10, Math.max(50, +ty.hOpen || 1000)), vzC = +S.vz || 4; // v0.4.1 : option moniteur supprimée (l'appli s'arrête à l'ouverture du dernier : pas de sous voile à montrer)
-    const te = i * sep, k = G / (vt * vt);
+    const te = teOf(i), k = G / (vt * vt);
     let t = 0, x = vpg * te, z = H, u = dir * Va, phase = 'ff', tO = 0, vOpen = 0, tp = 0, tOpenStart = null, tOpenEnd = null;
     const track = [{ t: te, x, z, ph: 'ff' }];
     for (let n = 0; n < 200000 && z > 0; n++) {
@@ -171,8 +188,8 @@ function simulate() {
       pr.red = pr.d < gap; s.pairs.push(pr); if (pr.red) close.push(pr);
     }
   });
-  SIM = { H, Va, dir, sep, vpg, paras, tEnd, samples, close, lastExit: paras.length ? paras[paras.length - 1].te : 0 };
-  bounds();
+  return { H, Va, dir, sep, vpg, paras, tEnd, samples, close, lastExit: paras.length ? paras[paras.length - 1].te : 0,
+    gaps: paras.slice(1).map((p, i) => p.te - paras[i].te), opt: !!gaps };
 }
 function posAt(p, t) { // position (x, z) du para à l'instant t, null s'il n'est pas encore sorti
   if (t < p.te) return null;
@@ -200,7 +217,7 @@ function bounds() {
   [-4, tPlane1].forEach(t => { const x = planeX(t); x0 = Math.min(x0, x); x1 = Math.max(x1, x); });
   if (!isFinite(x0)) { x0 = -500; x1 = 500; }
   const span = Math.max(400, x1 - x0), pad = span * 0.04; x0 -= pad; x1 += pad;
-  const top = $('top').getBoundingClientRect().bottom + 34, bot = Math.min($('scrub').getBoundingClientRect().top, $('ctrl').getBoundingClientRect().top) - 22, left = 50, right = W - 14;
+  const top = $('top').getBoundingClientRect().bottom + (S.opt ? 58 : 34), /* optimisé : place pour les segments entre sorties */ bot = Math.min($('scrub').getBoundingClientRect().top, $('ctrl').getBoundingClientRect().top) - 22, left = 50, right = W - 14;
   // bas de la vue : un peu sous l'ouverture la plus basse (l'animation s'arrête quand le dernier a ouvert : pas besoin du sol)
   let zMin = Infinity; SIM.paras.forEach(p => p.track.forEach(q => { if (q.t <= SIM.tEnd) zMin = Math.min(zMin, q.z); }));
   let z0 = Math.max(0, Math.floor(((isFinite(zMin) ? zMin : 0) - 200) / 250) * 250);
@@ -238,6 +255,24 @@ function draw() {
   const tP1 = Math.min(tNow, SIM.lastExit + 6);
   g.strokeStyle = '#555'; g.lineWidth = 1; g.setLineDash([2, 4]); g.beginPath(); g.moveTo(X(planeX(-4)), Y(H)); g.lineTo(X(planeX(tP1)), Y(H)); g.stroke(); g.setLineDash([]);
   if (tNow <= SIM.lastExit + 6) drawPlane(X(planeX(tNow)), Y(H), SIM.dir);
+  // Largage optimisé : entre deux points de sortie, petits pointillés + segment avec le temps et la distance (vitesse sol × temps),
+  // affichés au fur et à mesure des sorties
+  if (SIM.opt) {
+    const y0 = Y(H), ys = y0 - 11, boxes = [];
+    g.save(); g.font = '700 10px -apple-system, Helvetica, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'bottom';
+    SIM.gaps.forEach((gp, i) => {
+      const pa = SIM.paras[i], pb = SIM.paras[i + 1]; if (tNow < pb.te - 1e-6) return;
+      const xa = X(planeX(pa.te)), xb = X(planeX(pb.te));
+      g.strokeStyle = '#c8c8c8'; g.lineWidth = 1; g.setLineDash([2, 2]);
+      g.beginPath(); g.moveTo(xa, y0); g.lineTo(xa, ys - 4); g.moveTo(xb, y0); g.lineTo(xb, ys - 4); g.stroke(); g.setLineDash([]);
+      g.beginPath(); g.moveTo(xa, ys); g.lineTo(xb, ys); g.stroke();
+      const t = `${fmtInt(gp)} s · ${fmtInt(Math.abs(SIM.vpg) * gp)} m`, w = g.measureText(t).width, cx = (xa + xb) / 2;
+      let ly = ys - 2; for (let r = 0; r < 3 && boxes.some(b => cx - w / 2 - 2 < b[1] && cx + w / 2 + 2 > b[0] && b[2] === ly); r++) ly -= 12; // chevauchement : un cran plus haut
+      boxes.push([cx - w / 2 - 2, cx + w / 2 + 2, ly]);
+      outlined(t, cx, ly, '#fff');
+    });
+    g.restore();
+  }
   // Trajectoires des paras (pointillés) jusqu'à maintenant
   SIM.paras.forEach(p => {
     if (tNow < p.te) return;
@@ -349,10 +384,10 @@ function drawPara(x, y, p, ph) {
     g.beginPath(); g.ellipse(x, y - 11, 9, 4.5, 0, Math.PI, 0); g.fillStyle = p.color; g.fill(); g.strokeStyle = '#000'; g.lineWidth = 1; g.stroke();
     g.beginPath(); g.moveTo(x - 8, y - 11); g.lineTo(x, y); g.lineTo(x + 8, y - 11); g.strokeStyle = p.color; g.stroke();
   }
+  drawPicto(p.type, x, y + 18, 24, p.color); // v0.8.0 : pictogramme centré SOUS le numéro (voile au-dessus, E d'élève en dessous)
   g.beginPath(); g.arc(x, y, 6.5, 0, Math.PI * 2); g.fillStyle = p.color; g.fill(); g.strokeStyle = '#000'; g.lineWidth = 1.2; g.stroke();
   g.font = '700 9px -apple-system, Helvetica, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#000';
   g.fillText(String(p.i + 1), x, y + 0.5);
-  drawPicto(p.type, x - 22, y, 26, p.color); // pictogramme à gauche du numéro (au lieu de P / V / É)
 }
 
 // ---------- Animation : lecture / pause (un seul bouton), stop ; le ralenti se fait avec la barre d'avancement ----------
@@ -534,6 +569,10 @@ function fillInputs() {
 $('sepAuto').addEventListener('click', () => { S.sep = null; fillInputs(); changed(); });
 $('dirL').addEventListener('click', () => { S.dir = 'L'; fillInputs(); changed(); });
 $('dirR').addEventListener('click', () => { S.dir = 'R'; fillInputs(); changed(); });
+$('bOpt').addEventListener('click', () => { // bascule largage optimisé / uniforme (ne compte pas comme une modification de la config)
+  S.opt = !S.opt; save(); simulate(); tNow = 0; playing = false; draw(); syncCtrl(); syncSummary(); fillInputs(); syncOpt();
+});
+function syncOpt() { $('bOpt').classList.toggle('on', !!S.opt); }
 $('bDir').addEventListener('click', () => { S.dir = S.dir === 'R' ? 'L' : 'R'; fillInputs(); changed(); });
 $('resetParams').addEventListener('click', async () => {
   if (!(await ask('Remettre les paramètres des chuteurs, sous voile et d\'affichage aux valeurs par défaut ?'))) return;
@@ -568,7 +607,7 @@ function syncSummary() {
   const ic = `<svg viewBox="-20 -10 40 20" width="58" height="29"><g transform="scale(${fl},1)" stroke="#000" stroke-width="1" fill="#e8e8e8"><path d="M16 0L9 -3L-12 -3L-16 -9L-19 -9L-17 -2L-17 2L9 3Z"/><path fill="#bbb" d="M2 0L-4 9L-8 9L-5 0Z"/></g></svg>` +
     `<svg viewBox="0 0 60 14" width="72" height="17"><path d="${S.dir === 'R' ? 'M4 7H55M47 1.5L55 7L47 12.5' : 'M56 7H5M13 1.5L5 7L13 12.5'}" fill="none" stroke="#4fc3f7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   // v0.7.2 : sous la flèche, l'espacement entre les sorties : ↔ temps / distance parcourue par l'avion (vitesse sol × temps)
-  const gapTxt = `↔\u00a0${fmtInt(SIM.sep)}\u00a0s / ${fmtInt(Math.abs(SIM.vpg) * SIM.sep)}\u00a0m` /* espaces insécables : sur petit écran, retour à la ligne seulement après le « / » */, key = S.dir + gapTxt;
+  const gapTxt = SIM.opt ? `↔\u00a0${SIM.gaps.map(fmtInt).join('·') || '–'}\u00a0s` : `↔\u00a0${fmtInt(SIM.sep)}\u00a0s / ${fmtInt(Math.abs(SIM.vpg) * SIM.sep)}\u00a0m` /* espaces insécables : sur petit écran, retour à la ligne seulement après le « / » */, key = S.dir + gapTxt;
   if ($('bDir').dataset.k !== key) { $('bDir').innerHTML = ic + `<span class="gap">${gapTxt}</span>`; $('bDir').dataset.k = key; $('bDir').title = S.dir === 'R' ? 'Face au vent (appuyer pour vent dans le dos)' : 'Vent dans le dos (appuyer pour face au vent)'; }
   if (!$('sheet').classList.contains('hidden')) { renderWinds(); fillInputs(); } // Auto suit le vent : temps entre sorties à jour
 }
@@ -591,7 +630,7 @@ document.addEventListener('focusout', () => setTimeout(() => window.scrollTo(0, 
 
 // ---------- Démarrage ----------
 $('ver').textContent = VERSION;
-simulate(); resize(); syncCtrl(); syncSummary(); renderConfigs();
+simulate(); resize(); syncCtrl(); syncSummary(); renderConfigs(); syncOpt();
 window.addEventListener('resize', () => setTimeout(resize, 120));
 requestAnimationFrame(frame);
 
