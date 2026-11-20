@@ -83,3 +83,7 @@ label{display:block;font-size:12px;color:#aaa;margin:6px 0 3px}
 #optBox .opt small{font-size:9px;color:#aaa;white-space:nowrap}
 #optBox .opt.on{background:#1f6fb2;border-color:#1f6fb2;color:#fff}
 #optBox .opt.on small{color:#dbe9f5}
+
+/* v0.11.0 : sous le menu Configs, les pictogrammes des paras dans l'ordre de sortie (couleur du para), sur plusieurs lignes au besoin */
+#paraStrip{display:flex;flex-wrap:wrap;gap:1px 2px;justify-content:center;pointer-events:none}
+#paraStrip span{display:block;line-height:0}

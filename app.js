@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.10.0';
+const VERSION = '0.11.0';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -482,7 +482,8 @@ const BUILTIN = (() => {
     C('FF puis VR · vent décroissant', 'FF VR', dec),
     C('VR puis FF · vent décroissant', 'VR FF', dec),
     C('FF, 2 VR, élève, FF · vent décroissant', 'FF VR VR E FF', dec),
-    C('2 VR, FF, élève, FF · vent décroissant', 'VR VR FF E FF', dec)
+    C('2 VR, FF, élève, FF · vent décroissant', 'VR VR FF E FF', dec),
+    C('FF puis élève · vent décroissant', 'FF E', dec)
   ];
 })();
 // v0.7.9 : configuration en cours gardée (S.cfgName) même après une modification (S.cfgDirty → « (modifiée) »)
@@ -534,7 +535,7 @@ $('cfgSel').addEventListener('change', async e => {
   }
   renderConfigs();
 });
-function changed(keepTime) { if (!keepTime && S.cfgName) S.cfgDirty = true; save(); simulate(); if (!keepTime) { tNow = 0; playing = false; } else tNow = Math.min(tNow, SIM.tEnd); draw(); syncCtrl(); syncSummary(); renderConfigs(); }
+function changed(keepTime) { if (!keepTime && S.cfgName) S.cfgDirty = true; save(); renderStrip(); simulate(); if (!keepTime) { tNow = 0; playing = false; } else tNow = Math.min(tNow, SIM.tEnd); draw(); syncCtrl(); syncSummary(); renderConfigs(); }
 
 function renderParas() {
   const ul = $('paraList'); ul.innerHTML = '';
@@ -603,6 +604,10 @@ $('dirR').addEventListener('click', () => { S.dir = 'R'; fillInputs(); changed()
 document.querySelectorAll('#optBox .opt').forEach(b => b.addEventListener('click', () => { // un seul actif ; réappui = uniforme
   S.optMode = S.optMode === b.dataset.m ? null : b.dataset.m; save(); simulate(); tNow = 0; playing = false; draw(); syncCtrl(); syncSummary(); fillInputs(); syncOpt();
 }));
+function renderStrip() { // pictogrammes des paras sous le menu Configs
+  const html = S.paras.map((p, i) => `<span style="color:${COLORS[i % COLORS.length]}">${pictoSVG(p.type, 17)}</span>`).join('');
+  if ($('paraStrip').innerHTML !== html) $('paraStrip').innerHTML = html;
+}
 function syncOpt() { document.querySelectorAll('#optBox .opt').forEach(b => b.classList.toggle('on', S.optMode === b.dataset.m)); }
 $('bDir').addEventListener('click', () => { S.dir = S.dir === 'R' ? 'L' : 'R'; fillInputs(); changed(); });
 $('resetParams').addEventListener('click', async () => {
@@ -662,7 +667,7 @@ document.addEventListener('focusout', () => setTimeout(() => window.scrollTo(0, 
 
 // ---------- Démarrage ----------
 $('ver').textContent = VERSION;
-simulate(); resize(); syncCtrl(); syncSummary(); renderConfigs(); syncOpt();
+simulate(); resize(); syncCtrl(); syncSummary(); renderConfigs(); syncOpt(); renderStrip();
 window.addEventListener('resize', () => setTimeout(resize, 120));
 requestAnimationFrame(frame);
 

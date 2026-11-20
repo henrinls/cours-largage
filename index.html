@@ -11,7 +11,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Cours de largage · simulation</title>
-<link rel="stylesheet" href="style.css?v=0.10.0">
+<link rel="stylesheet" href="style.css?v=0.11.0">
 </head>
 <body>
 <canvas id="cv"></canvas>
@@ -20,6 +20,7 @@
   <div id="leftCol">
     <button id="btnSetup" class="pill">⚙ Largage</button>
     <div id="cfgBox" class="pill"><span id="cfgLbl">Configs</span><select id="cfgSel" aria-label="Configurations enregistrées"></select></div>
+    <div id="paraStrip" aria-label="Paras dans l'ordre de sortie"></div>
   </div>
   <div id="dirBox"><button id="bDir" class="pill" aria-label="Sens de largage (face au vent / vent dans le dos)"></button></div>
   <div id="rightCol"><div id="clock"></div><div id="optBox">
@@ -109,6 +110,6 @@
 </div>
 <div id="toast" class="hidden"></div>
 
-<script src="app.js?v=0.10.0"></script>
+<script src="app.js?v=0.11.0"></script>
 </body>
 </html>
