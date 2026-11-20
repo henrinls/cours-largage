@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.7.1';
+const VERSION = '0.7.2';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -505,7 +505,9 @@ function syncSummary() {
   const fl = S.dir === 'R' ? 1 : -1; // v0.7.0 : un avion (pointé dans le sens de vol) au-dessus de la flèche, plus de texte
   const ic = `<svg viewBox="-20 -10 40 20" width="58" height="29"><g transform="scale(${fl},1)" stroke="#000" stroke-width="1" fill="#e8e8e8"><path d="M16 0L9 -3L-12 -3L-16 -9L-19 -9L-17 -2L-17 2L9 3Z"/><path fill="#bbb" d="M2 0L-4 9L-8 9L-5 0Z"/></g></svg>` +
     `<svg viewBox="0 0 60 14" width="72" height="17"><path d="${S.dir === 'R' ? 'M4 7H55M47 1.5L55 7L47 12.5' : 'M56 7H5M13 1.5L5 7L13 12.5'}" fill="none" stroke="#4fc3f7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  if ($('bDir').dataset.dir !== S.dir) { $('bDir').innerHTML = ic; $('bDir').dataset.dir = S.dir; $('bDir').title = S.dir === 'R' ? 'Face au vent (appuyer pour vent dans le dos)' : 'Vent dans le dos (appuyer pour face au vent)'; }
+  // v0.7.2 : sous la flèche, l'espacement entre les sorties : ↔ temps / distance parcourue par l'avion (vitesse sol × temps)
+  const gapTxt = `↔\u00a0${fmtInt(SIM.sep)}\u00a0s / ${fmtInt(Math.abs(SIM.vpg) * SIM.sep)}\u00a0m` /* espaces insécables : sur petit écran, retour à la ligne seulement après le « / » */, key = S.dir + gapTxt;
+  if ($('bDir').dataset.k !== key) { $('bDir').innerHTML = ic + `<span class="gap">${gapTxt}</span>`; $('bDir').dataset.k = key; $('bDir').title = S.dir === 'R' ? 'Face au vent (appuyer pour vent dans le dos)' : 'Vent dans le dos (appuyer pour face au vent)'; }
   if (!$('sheet').classList.contains('hidden')) { renderWinds(); fillInputs(); } // Auto suit le vent : temps entre sorties à jour
 }
 
