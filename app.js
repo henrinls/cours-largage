@@ -2,7 +2,7 @@
 // Vue de profil : l'avion en haut, le sol en bas ; trajectoires gardées en pointillés, points numérotés à intervalle
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins de l'écart voulu (300 m) → en rouge.
 'use strict';
-const VERSION = '0.2.2';
+const VERSION = '0.3.0';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -246,12 +246,12 @@ function drawPara(x, y, p, ph) {
   outlined(TYPE_LETTER[p.type] + (p.mon ? 'm' : ''), x - 9, y, p.color);
 }
 
-// ---------- Animation : lecture, pause, stop, ralenti (appui prolongé) ----------
-let playing = false, slowHeld = false, lastTs = 0;
+// ---------- Animation : lecture / pause (un seul bouton), stop ; le ralenti se fait avec la barre d'avancement ----------
+let playing = false, lastTs = 0;
 function frame(ts) {
   const dtR = lastTs ? Math.min(0.1, (ts - lastTs) / 1000) : 0; lastTs = ts;
   if (playing && SIM) {
-    tNow += dtR * (slowHeld ? 1 : Math.max(0.1, +S.play || 5));
+    tNow += dtR * Math.max(0.1, +S.play || 5);
     if (tNow >= SIM.tEnd) { tNow = SIM.tEnd; playing = false; }
     draw(); syncCtrl();
   }
@@ -259,26 +259,24 @@ function frame(ts) {
 }
 // Barre d'avancement : avance pendant la lecture ; on la fait glisser pour revenir en arrière ou avancer, et au relâché c'est en pause
 const scrub = $('scrub');
-scrub.addEventListener('input', () => { playing = false; slowHeld = false; tNow = Math.max(0, Math.min(SIM ? SIM.tEnd : 0, +scrub.value)); draw(); syncCtrl(); });
+scrub.addEventListener('input', () => { playing = false; tNow = Math.max(0, Math.min(SIM ? SIM.tEnd : 0, +scrub.value)); draw(); syncCtrl(); });
 let scrubbing = false;
-scrub.addEventListener('pointerdown', () => { scrubbing = true; playing = false; slowHeld = false; syncCtrl(); });
+scrub.addEventListener('pointerdown', () => { scrubbing = true; playing = false; syncCtrl(); });
 ['pointerup', 'pointercancel', 'change'].forEach(ev => scrub.addEventListener(ev, () => { scrubbing = false; playing = false; syncCtrl(); })); // relâché : pause
 function syncCtrl() {
   if (SIM) { scrub.max = SIM.tEnd; if (!scrubbing) scrub.value = tNow; }
-  $('bPlay').classList.toggle('on', playing && !slowHeld); $('bSlow').classList.toggle('on', slowHeld);
+  // un seul bouton : ▶ quand c'est arrêté, ⏸ pendant la lecture
+  const ic = playing ? '⏸' : '▶'; if ($('bPlay').textContent !== ic) $('bPlay').textContent = ic;
   // texte de longueur constante (toujours une décimale, vitesse toujours affichée) : la ligne du haut ne doit plus sauter
-  const tTxt = (Math.round(tNow * 10) / 10).toFixed(1).replace('.', ','), spd = slowHeld ? '×1' : `×${fmt1(+S.play || 5)}`;
+  const tTxt = (Math.round(tNow * 10) / 10).toFixed(1).replace('.', ','), spd = `×${fmt1(+S.play || 5)}`;
   const txt = SIM ? `t = ${tTxt} s · ${playing ? spd : '⏸'}` : '';
   if ($('clock').textContent !== txt) $('clock').textContent = txt;
 }
-$('bPlay').addEventListener('click', () => { if (SIM && tNow >= SIM.tEnd) tNow = 0; playing = true; slowHeld = false; syncCtrl(); });
-$('bPause').addEventListener('click', () => { playing = false; slowHeld = false; syncCtrl(); });
-$('bStop').addEventListener('click', () => { playing = false; slowHeld = false; tNow = 0; draw(); syncCtrl(); });
-const slowOn = e => { e.preventDefault(); if (SIM && tNow >= SIM.tEnd) tNow = 0; slowHeld = true; playing = true; syncCtrl(); };
-const slowOff = () => { if (!slowHeld) return; slowHeld = false; playing = false; draw(); syncCtrl(); };
-$('bSlow').addEventListener('pointerdown', slowOn);
-['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => $('bSlow').addEventListener(ev, slowOff));
-$('bSlow').addEventListener('contextmenu', e => e.preventDefault());
+$('bPlay').addEventListener('click', () => {
+  if (playing) { playing = false; } else { if (SIM && tNow >= SIM.tEnd) tNow = 0; playing = true; }
+  syncCtrl();
+});
+$('bStop').addEventListener('click', () => { playing = false; tNow = 0; draw(); syncCtrl(); });
 
 // ---------- Panneau de réglages ----------
 function openSheet() { $('sheet').classList.remove('hidden'); renderSheet(); }

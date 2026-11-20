@@ -11,7 +11,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Cours de largage · simulation</title>
-<link rel="stylesheet" href="style.css?v=0.2.2">
+<link rel="stylesheet" href="style.css?v=0.3.0">
 </head>
 <body>
 <canvas id="cv"></canvas>
@@ -24,10 +24,8 @@
 
 <input type="range" id="scrub" min="0" max="100" step="0.1" value="0" aria-label="Avancement de l'animation">
 <nav id="ctrl">
-  <button id="bPlay" title="Lecture">▶</button>
-  <button id="bPause" title="Pause">⏸</button>
+  <button id="bPlay" title="Lecture / pause">▶</button>
   <button id="bStop" title="Retour au début">⏹</button>
-  <button id="bSlow" title="Appui prolongé : ralenti (vitesse réelle)">🐢</button>
 </nav>
 
 <section id="sheet" class="hidden">
@@ -92,7 +90,7 @@
       <div><label>Points tous les (s)</label><input id="p_dot" inputmode="decimal"></div>
       <div><label>Vitesse de l'animation (×)</label><input id="p_play" inputmode="decimal"></div>
     </div>
-    <p class="hint">Ralenti (🐢, appui prolongé) = vitesse réelle. Sous voile, le para n'a pas de vitesse propre : il dérive avec le vent de sa tranche. Projection à la sortie : le para part à la vitesse de l'avion et l'air le freine.</p>
+    <p class="hint">Ralenti : faire glisser la barre d'avancement (au relâché, l'animation reste en pause). Sous voile, le para n'a pas de vitesse propre : il dérive avec le vent de sa tranche. Projection à la sortie : le para part à la vitesse de l'avion et l'air le freine.</p>
     <div class="row"><button id="resetParams" class="wide">Remettre les valeurs par défaut</button></div>
     <p class="hint">Version <span id="ver"></span></p>
   </div>
@@ -107,6 +105,6 @@
 </div>
 <div id="toast" class="hidden"></div>
 
-<script src="app.js?v=0.2.2"></script>
+<script src="app.js?v=0.3.0"></script>
 </body>
 </html>
