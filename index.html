@@ -11,7 +11,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Cours de largage · simulation</title>
-<link rel="stylesheet" href="style.css?v=0.4.1">
+<link rel="stylesheet" href="style.css?v=0.5.0">
 </head>
 <body>
 <canvas id="cv"></canvas>
@@ -42,7 +42,7 @@
       <button id="addPara" class="wide">＋ Ajouter un para</button>
       <button id="clearParas" class="wide">Tout retirer</button>
     </div>
-    <p class="hint">Appui sur le type pour passer de vertical à à plat à élève. ≡ : glisser pour changer l'ordre de sortie.</p>
+    <p class="hint">Appui sur le pictogramme pour passer de vertical (tête en bas) à à plat, puis à élève (à plat avec un E). ≡ : glisser pour changer l'ordre de sortie.</p>
 
     <h3>Avion</h3>
     <div class="grid2">
@@ -71,7 +71,7 @@
   <div id="tab-params" class="tab hidden">
     <h3>Chuteurs</h3>
     <table class="ptab">
-      <thead><tr><th></th><th>Vertical</th><th>À plat</th><th>Élève</th></tr></thead>
+      <thead><tr><th></th><th data-picto="vertical">Vertical</th><th data-picto="plat">À plat</th><th data-picto="eleve">Élève</th></tr></thead>
       <tbody>
         <tr><td>Vitesse de chute (m/s)</td><td><input id="t_vertical_vt" inputmode="decimal"></td><td><input id="t_plat_vt" inputmode="decimal"></td><td><input id="t_eleve_vt" inputmode="decimal"></td></tr>
         <tr><td>Chute les 10 premières s (m)</td><td><input id="t_vertical_d10" inputmode="decimal"></td><td><input id="t_plat_d10" inputmode="decimal"></td><td><input id="t_eleve_d10" inputmode="decimal"></td></tr>
@@ -105,6 +105,6 @@
 </div>
 <div id="toast" class="hidden"></div>
 
-<script src="app.js?v=0.4.1"></script>
+<script src="app.js?v=0.5.0"></script>
 </body>
 </html>

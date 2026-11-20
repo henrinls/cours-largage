@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.4.1';
+const VERSION = '0.5.0';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -26,7 +26,33 @@ const DEF = {
   windIdx: 0
 };
 const TYPE_NAMES = { vertical: 'Vertical', plat: 'À plat', eleve: 'Élève' };
-const TYPE_LETTER = { vertical: 'V', plat: 'P', eleve: 'É' };
+// Pictogrammes (dessinés pour l'appli, carré de 24) : à plat = position de base vue de dessus, bras et jambes écartés ;
+// vertical = tête en bas, jambes en V vers le haut ; élève = à plat avec un E au-dessus. Traits + tête pleine.
+const PICTO = {
+  plat: { d: 'M12 7.5V14M12 8.5L6.5 9.5L5 5.5M12 8.5L17.5 9.5L19 5.5M12 14L7.5 17L8.5 21.5M12 14L16.5 17L15.5 21.5', head: [12, 4.4] },
+  vertical: { d: 'M12 9.5V16.5M12 15.5L7 16.5L4.5 19.5M12 15.5L17 16.5L19.5 19.5M12 9.5L8 5.5L6.5 1.5M12 9.5L16 5.5L17.5 1.5', head: [12, 19.6] }
+};
+PICTO.eleve = PICTO.plat;
+const PATHS = {};
+// Version HTML (liste des paras, tableau) : couleur du texte ; l'élève a un E au-dessus
+function pictoSVG(type, size) {
+  const p = PICTO[type] || PICTO.plat, e = type === 'eleve';
+  return `<svg class="picto" viewBox="0 ${e ? -9 : 0} 24 ${e ? 33 : 24}" width="${size}" height="${size * (e ? 33 : 24) / 24}" aria-label="${TYPE_NAMES[type]}">` +
+    (e ? '<text x="12" y="-1" text-anchor="middle" font-size="10" font-weight="800" fill="currentColor" font-family="-apple-system,Helvetica,Arial,sans-serif">E</text>' : '') +
+    `<path d="${p.d}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>` +
+    `<circle cx="${p.head[0]}" cy="${p.head[1]}" r="2.7" fill="currentColor"/></svg>`;
+}
+// Version canvas (sur le dessin), centrée en (x, y), d'environ size px de haut, liseré noir pour rester lisible
+function drawPicto(type, x, y, size, col) {
+  const p = PICTO[type] || PICTO.plat, k = size / 24, path = PATHS[type] || (PATHS[type] = new Path2D(p.d));
+  g.save(); g.translate(x - 12 * k, y - 12 * k); g.scale(k, k); g.lineCap = 'round'; g.lineJoin = 'round';
+  g.strokeStyle = 'rgba(0,0,0,.9)'; g.lineWidth = 2.4 + 2.6 / k; g.stroke(path);
+  g.beginPath(); g.arc(p.head[0], p.head[1], 2.7 + 1.3 / k, 0, Math.PI * 2); g.fillStyle = 'rgba(0,0,0,.9)'; g.fill();
+  g.strokeStyle = col; g.lineWidth = 2.4; g.stroke(path);
+  g.beginPath(); g.arc(p.head[0], p.head[1], 2.7, 0, Math.PI * 2); g.fillStyle = col; g.fill();
+  g.restore();
+  if (type === 'eleve') { g.font = '800 10px -apple-system, Helvetica, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'bottom'; outlined('E', x, y - size / 2 - 1, col); }
+}
 const NEXT_TYPE = { vertical: 'plat', plat: 'eleve', eleve: 'vertical' };
 const COLORS = ['#4fc3f7', '#ffd54f', '#81c784', '#ff8a65', '#ba68c8', '#4db6ac', '#f06292', '#aed581', '#90caf9', '#ffb74d', '#ce93d8', '#80deea'];
 
@@ -256,8 +282,7 @@ function drawPara(x, y, p, ph) {
   g.beginPath(); g.arc(x, y, 6.5, 0, Math.PI * 2); g.fillStyle = p.color; g.fill(); g.strokeStyle = '#000'; g.lineWidth = 1.2; g.stroke();
   g.font = '700 9px -apple-system, Helvetica, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#000';
   g.fillText(String(p.i + 1), x, y + 0.5);
-  g.font = '700 10px -apple-system, Helvetica, Arial, sans-serif'; g.textAlign = 'right';
-  outlined(TYPE_LETTER[p.type], x - 9, y, p.color);
+  drawPicto(p.type, x - 19, y, 18, p.color); // pictogramme à gauche du numéro (au lieu de P / V / É)
 }
 
 // ---------- Animation : lecture / pause (un seul bouton), stop ; le ralenti se fait avec la barre d'avancement ----------
@@ -309,7 +334,7 @@ function renderParas() {
   S.paras.forEach((p, i) => {
     const li = document.createElement('li'); li.dataset.i = i;
     li.innerHTML = `<span class="hdl">≡</span><span class="num" style="color:${COLORS[i % COLORS.length]}">${i + 1}</span>
-      <button class="type">${TYPE_NAMES[p.type]}</button><button class="del" title="Retirer">✕</button>`;
+      <button class="type" title="${TYPE_NAMES[p.type]} : appuyer pour changer">${pictoSVG(p.type, 34)}</button><button class="del" title="Retirer">✕</button>`;
     li.querySelector('.type').onclick = () => { p.type = NEXT_TYPE[p.type] || 'plat'; renderParas(); changed(); };
     li.querySelector('.del').onclick = () => { S.paras.splice(i, 1); renderParas(); changed(); };
     dragHandle(li.querySelector('.hdl'), li);
@@ -401,6 +426,7 @@ $('windDelete').addEventListener('click', async () => {
   S.winds.splice(S.windIdx, 1); S.windIdx = 0; renderWinds(); changed();
 });
 function renderSheet() { renderParas(); fillInputs(); renderWinds(); }
+document.querySelectorAll('th[data-picto]').forEach(th => th.insertAdjacentHTML('afterbegin', pictoSVG(th.dataset.picto, 26)));
 function syncSummary() {
   if (!SIM) return;
   $('summary').innerHTML = `${S.paras.length} para${S.paras.length > 1 ? 's' : ''} · ${fmtInt(S.speed)} kt · ${SIM.sep} s entre sorties<br>${S.dir === 'R' ? 'face au vent →' : '← vent dans le dos'} · ${S.winds[S.windIdx].name}`;
