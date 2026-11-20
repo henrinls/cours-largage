@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.7.3';
+const VERSION = '0.7.4';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -156,12 +156,18 @@ function simulate() {
   // Écart HORIZONTAL entre paras qui se suivent, à chaque point ; compté seulement quand le second est sorti depuis plus de 10 s
   // (avant, la projection du second rapproche toujours les paras, même pour un largage parfait)
   const gap = +S.redGap || 250, close = [];
+  // v0.7.4 (Henri) : dès que les DEUX paras d'un couple ont ouvert, l'écart de ce couple est figé : plus de mesure ensuite
+  // (ni grise ni rouge) ; à la fin, l'écart affiché pour ce couple est celui du moment où le second des deux a ouvert
+  const tBoth = i => Math.max(paras[i].tOpenStart != null ? paras[i].tOpenStart : paras[i].te, paras[i + 1].tOpenStart != null ? paras[i + 1].tOpenStart : paras[i + 1].te);
   samples.forEach(s => {
     s.pairs = [];
     for (let i = 0; i + 1 < paras.length; i++) {
-      const a = s.pos[i], b = s.pos[i + 1];
-      if (!a || !b || s.t - paras[i + 1].te <= 10) continue;
-      const pr = { k: s.k, t: s.t, i, a, b, d: Math.abs(a.x - b.x) };
+      const tb = tBoth(i);
+      if (!s.last && s.t > tb + 1e-6) continue;
+      const tt = s.last ? Math.min(tb, s.t) : s.t;
+      const a = s.last ? posAt(paras[i], tt) : s.pos[i], b = s.last ? posAt(paras[i + 1], tt) : s.pos[i + 1];
+      if (!a || !b || tt - paras[i + 1].te <= 10) continue;
+      const pr = { k: s.k, t: tt, i, a, b, d: Math.abs(a.x - b.x) };
       pr.red = pr.d < gap; s.pairs.push(pr); if (pr.red) close.push(pr);
     }
   });
@@ -411,7 +417,7 @@ function loadConfig(c) {
 }
 $('cfgSel').addEventListener('change', async e => {
   const v = e.target.value;
-  if (v[0] === 'c' || v[0] === 'b') { loadConfig((v[0] === 'b' ? BUILTIN : S.configs)[+v.slice(1)]); toast(`Configuration « ${cfgLoaded} »`); return; }
+  if (v[0] === 'c' || v[0] === 'b') { loadConfig((v[0] === 'b' ? BUILTIN : S.configs)[+v.slice(1)]); return; } /* pas de message : le menu affiche déjà le nom (et le message cachait les distances du bas) */
   if (v === 'save') {
     renderConfigs();
     const n = await ask('Nom de cette configuration (ex. « FF devant les VR, vent fort ») :', ''); if (!n) return;
