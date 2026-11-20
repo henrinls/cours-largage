@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.7.5';
+const VERSION = '0.7.6';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -205,7 +205,7 @@ function bounds() {
   let zMin = Infinity; SIM.paras.forEach(p => p.track.forEach(q => { if (q.t <= SIM.tEnd) zMin = Math.min(zMin, q.z); }));
   let z0 = Math.max(0, Math.floor(((isFinite(zMin) ? zMin : 0) - 200) / 250) * 250);
   // v0.6.2 : au moins 72 px sous le para le plus bas pour la ligne des distances de la fin (sinon elle tombait sur l'échelle)
-  const kk = 72 / Math.max(100, bot - top); if (isFinite(zMin)) z0 = Math.min(z0, (zMin - kk * SIM.H) / (1 - kk));
+  const kk = 110 / Math.max(100, bot - top); /* 110 px : place pour deux lignes de distances à la fin */ if (isFinite(zMin)) z0 = Math.min(z0, (zMin - kk * SIM.H) / (1 - kk));
   view = { x0, x1, left, right, top, bot, z0, sx: (right - left) / (x1 - x0), sy: (bot - top) / (SIM.H - z0) };
 }
 const X = x => view.left + (x - view.x0) * view.sx;
@@ -280,7 +280,16 @@ function draw() {
     const c = posAt(p, tNow); if (!c) return;
     drawPara(X(c.x), Y(c.z), p, c.ph);
   });
-  const placed = []; meas.forEach(([c, col]) => hMeasure(c, col, placed, c.k === lastK ? endY : null));
+  // v0.7.6 : deux segments de fin qui se recouvrent ne sont plus sur la même ligne : chacun prend la première ligne libre,
+  // les lignes suivantes 34 px plus bas (sinon un 518 m recouvrait un 890 m, illisible)
+  const rows = [], rowOf = new Map();
+  meas.forEach(([c]) => {
+    if (c.k !== lastK) return;
+    const x1 = Math.min(X(c.a.x), X(c.b.x)), x2 = Math.max(X(c.a.x), X(c.b.x));
+    let r = 0; while ((rows[r] || []).some(([u1, u2]) => x1 < u2 - 2 && x2 > u1 + 2)) r++;
+    (rows[r] = rows[r] || []).push([x1, x2]); rowOf.set(c, r);
+  });
+  const placed = []; meas.forEach(([c, col]) => hMeasure(c, col, placed, c.k === lastK ? endY + 34 * rowOf.get(c) : null));
   // Échelle
   const ratio = view.sy > 0 ? view.sx / view.sy : 1;
   const bar = [100, 200, 500, 1000, 2000].find(v => v * view.sx > 60) || 2000;
