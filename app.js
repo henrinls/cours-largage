@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.9.0';
+const VERSION = '0.10.0';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -137,8 +137,22 @@ let SIM = null;
 // v0.8.0 : « largage optimisé » (bouton sous le temps) : pour chaque couple de paras qui se suivent, le temps entre les deux sorties
 // allongé juste assez (secondes entières) pour éviter tout rouge entre eux — jamais moins que le largage uniforme
 function simulate() {
-  SIM = simCore(S.paras, S.opt ? optimizeGaps() : null);
+  SIM = simCore(S.paras, S.optMode ? gapsFor(S.optMode) : null);
   bounds();
+}
+// v0.10.0 : trois façons d'allonger, à comparer (Henri) — « model » = optimisé par le calcul ; « rule » = règle :
+// FF devant un para plus lent (VR, élève) : + 2 s + 1 s par 3 kt d'écart entre le vent à la hauteur de largage et au sol ;
+// « simple » = règle simplifiée : FF devant un para plus lent : temps de base + 50 %. Les autres couples gardent le temps de base.
+if (S.opt === true && !S.optMode) S.optMode = 'model'; delete S.opt;
+function gapsFor(mode) {
+  if (mode === 'model') return optimizeGaps();
+  const base = Math.max(1, Math.round(sepNow())), W = S.winds[S.windIdx].w, dKt = Math.abs((+W[3] || 0) - (+W[0] || 0)) / KT;
+  const vt = p => +(S.types[p.type] || S.types.plat).vt || 50;
+  return S.paras.slice(1).map((p, i) => {
+    const ffFirst = vt(S.paras[i]) > vt(p) + 1e-9;
+    if (!ffFirst) return base;
+    return mode === 'rule' ? base + Math.round(2 + dKt / 3) : Math.round(base * 1.5);
+  });
 }
 function optimizeGaps() {
   const n = S.paras.length, gaps = [];
@@ -234,7 +248,7 @@ function bounds() {
   [-4, tPlane1].forEach(t => { const x = planeX(t); x0 = Math.min(x0, x); x1 = Math.max(x1, x); });
   if (!isFinite(x0)) { x0 = -500; x1 = 500; }
   const span = Math.max(400, x1 - x0), pad = span * 0.04; x0 -= pad; x1 += pad;
-  const top = $('top').getBoundingClientRect().bottom + (S.opt ? 58 : 34), /* optimisé : place pour les segments entre sorties */ bot = Math.min($('scrub').getBoundingClientRect().top, $('ctrl').getBoundingClientRect().top) - 22, left = 50, right = W - 14;
+  const top = $('top').getBoundingClientRect().bottom + (S.optMode ? 58 : 34), /* optimisé/règles : place pour les segments entre sorties */ bot = Math.min($('scrub').getBoundingClientRect().top, $('ctrl').getBoundingClientRect().top) - 22, left = 50, right = W - 14;
   // bas de la vue : un peu sous l'ouverture la plus basse (l'animation s'arrête quand le dernier a ouvert : pas besoin du sol)
   let zMin = Infinity; SIM.paras.forEach(p => p.track.forEach(q => { if (q.t <= SIM.tEnd) zMin = Math.min(zMin, q.z); }));
   let z0 = Math.max(0, Math.floor(((isFinite(zMin) ? zMin : 0) - 200) / 250) * 250);
@@ -586,10 +600,10 @@ function fillInputs() {
 $('sepAuto').addEventListener('click', () => { S.sep = null; fillInputs(); changed(); });
 $('dirL').addEventListener('click', () => { S.dir = 'L'; fillInputs(); changed(); });
 $('dirR').addEventListener('click', () => { S.dir = 'R'; fillInputs(); changed(); });
-$('bOpt').addEventListener('click', () => { // bascule largage optimisé / uniforme (ne compte pas comme une modification de la config)
-  S.opt = !S.opt; save(); simulate(); tNow = 0; playing = false; draw(); syncCtrl(); syncSummary(); fillInputs(); syncOpt();
-});
-function syncOpt() { $('bOpt').classList.toggle('on', !!S.opt); }
+document.querySelectorAll('#optBox .opt').forEach(b => b.addEventListener('click', () => { // un seul actif ; réappui = uniforme
+  S.optMode = S.optMode === b.dataset.m ? null : b.dataset.m; save(); simulate(); tNow = 0; playing = false; draw(); syncCtrl(); syncSummary(); fillInputs(); syncOpt();
+}));
+function syncOpt() { document.querySelectorAll('#optBox .opt').forEach(b => b.classList.toggle('on', S.optMode === b.dataset.m)); }
 $('bDir').addEventListener('click', () => { S.dir = S.dir === 'R' ? 'L' : 'R'; fillInputs(); changed(); });
 $('resetParams').addEventListener('click', async () => {
   if (!(await ask('Remettre les paramètres des chuteurs, sous voile et d\'affichage aux valeurs par défaut ?'))) return;

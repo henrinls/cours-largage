@@ -11,7 +11,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Cours de largage · simulation</title>
-<link rel="stylesheet" href="style.css?v=0.9.0">
+<link rel="stylesheet" href="style.css?v=0.10.0">
 </head>
 <body>
 <canvas id="cv"></canvas>
@@ -22,7 +22,11 @@
     <div id="cfgBox" class="pill"><span id="cfgLbl">Configs</span><select id="cfgSel" aria-label="Configurations enregistrées"></select></div>
   </div>
   <div id="dirBox"><button id="bDir" class="pill" aria-label="Sens de largage (face au vent / vent dans le dos)"></button></div>
-  <div id="rightCol"><div id="clock"></div><button id="bOpt" class="pill" title="Largage optimisé : pour chaque couple, le plus petit temps entre sorties sans rouge">Optimisé</button></div>
+  <div id="rightCol"><div id="clock"></div><div id="optBox">
+    <button class="pill opt" data-m="model" title="Pour chaque couple, le plus petit allongement qui évite tout rouge (calcul du modèle)"><b>Optimisé</b><small>le + court sans rouge</small></button>
+    <button class="pill opt" data-m="rule" title="FF devant VR : + 2 s, + 1 s par 3 kt d'écart entre le vent en haut et au sol"><b>Règle</b><small>+2 s +1 s / 3 kt</small></button>
+    <button class="pill opt" data-m="simple" title="FF devant VR : temps de base + 50 %"><b>Règle simple</b><small>+50 %</small></button>
+  </div></div>
 </header>
 
 <input type="range" id="scrub" min="0" max="100" step="0.1" value="0" aria-label="Avancement de l'animation">
@@ -105,6 +109,6 @@
 </div>
 <div id="toast" class="hidden"></div>
 
-<script src="app.js?v=0.9.0"></script>
+<script src="app.js?v=0.10.0"></script>
 </body>
 </html>
