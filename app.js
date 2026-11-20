@@ -1,14 +1,15 @@
 // Cours de largage — simulation animée d'un largage, pour illustrer le cours du brevet C (et du BPA).
 // Vue de profil : l'avion en haut, le sol en bas ; trajectoires gardées en pointillés, points numérotés à intervalle
-// régulier (même numéro = même instant) ; deux paras qui se suivent à moins de l'écart voulu (300 m) → en rouge.
+// régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
+// L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.3.1';
+const VERSION = '0.4.0';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
 // ---------- Réglages ----------
 const DEF = {
-  speed: 70, height: 4000, sep: null /* null = auto */, dir: 'R' /* le vent va vers la gauche : vers la droite = face au vent */, gap: 300, dot: 5, play: 5,
+  speed: 70, height: 4000, sep: null /* null = auto */, dir: 'R' /* le vent va vers la gauche : vers la droite = face au vent */, gap: 300, redGap: 250, dot: 5, play: 5,
   vz: 4, vzMon: 8, openLoss: 100,
   types: {
     vertical: { vt: 75, d10: 450, hOpen: 1000 },
@@ -18,9 +19,9 @@ const DEF = {
   paras: [{ type: 'plat', mon: false }, { type: 'plat', mon: false }, { type: 'eleve', mon: false }],
   winds: [
     { name: 'Vent nul', w: [0, 0, 0, 0] },
-    { name: 'Vent régulier 5 m/s', w: [5, 5, 5, 5] },
-    { name: 'Vent fort en altitude', w: [3, 8, 12, 16] },
-    { name: 'Très fort en altitude, calme au sol', w: [1, 6, 15, 22] }
+    { name: 'Vent constant 4 m/s', w: [4, 4, 4, 4] },
+    { name: 'Vent constant 10 m/s', w: [10, 10, 10, 10] },
+    { name: 'Vent fort en altitude', w: [3, 8, 12, 16] }
   ],
   windIdx: 0
 };
@@ -40,6 +41,15 @@ if (!Array.isArray(S.winds) || !S.winds.length) S.winds = clone(DEF.winds);
 if (!(S.windIdx >= 0 && S.windIdx < S.winds.length)) S.windIdx = 0;
 if (!Array.isArray(S.paras)) S.paras = clone(DEF.paras);
 { const old = store.get('cl.state', null); if (old && old.dir && !old.dirFix) S.dir = old.dir === 'R' ? 'L' : 'R'; S.dirFix = true; } // v0.2.2 : libellés face au vent / vent dans le dos étaient inversés
+// v0.4.0 : nouveaux vents tout prêts (nul, constant faible, constant fort, fort en altitude dégressif) ; les vents créés par Henri sont gardés
+if (!S.windsV2) {
+  const OLD = ['Vent nul', 'Vent régulier 5 m/s', 'Vent fort en altitude', 'Très fort en altitude, calme au sol'];
+  const cur = S.winds[S.windIdx] && S.winds[S.windIdx].name;
+  const mine = S.winds.filter(w => !OLD.includes(w.name));
+  S.winds = clone(DEF.winds).concat(mine);
+  const j = S.winds.findIndex(w => w.name === cur); S.windIdx = j >= 0 ? j : 0; S.windsV2 = true;
+}
+if (!(+S.redGap > 0)) S.redGap = DEF.redGap;
 function save() { store.set('cl.state', S); }
 
 const num = v => { const x = parseFloat(String(v).replace(',', '.')); return isFinite(x) ? x : NaN; };
@@ -103,7 +113,7 @@ function simulate() {
   if (paras.length) samples.push({ k: samples.length + 1, t: tEnd, lab: 'fin', last: true, pos: paras.map(p => posAt(p, tEnd)) });
   // Écart HORIZONTAL entre paras qui se suivent, à chaque point ; compté seulement quand le second est sorti depuis plus de 10 s
   // (avant, la projection du second rapproche toujours les paras, même pour un largage parfait)
-  const gap = +S.gap || 300, close = [];
+  const gap = +S.redGap || 250, close = [];
   samples.forEach(s => {
     s.pairs = [];
     for (let i = 0; i + 1 < paras.length; i++) {
@@ -271,8 +281,8 @@ function syncCtrl() {
   // un seul bouton : ▶ quand c'est arrêté, ⏸ pendant la lecture
   const ic = playing ? '⏸' : '▶'; if ($('bPlay').textContent !== ic) $('bPlay').textContent = ic;
   // texte de longueur constante (toujours une décimale, vitesse toujours affichée) : la ligne du haut ne doit plus sauter
-  const tTxt = (Math.round(tNow * 10) / 10).toFixed(1).replace('.', ','), spd = `×${fmt1(+S.play || 5)}`;
-  const txt = SIM ? `t = ${tTxt} s · ${playing ? spd : '⏸'}` : '';
+  const tTxt = (Math.round(tNow * 10) / 10).toFixed(1).replace('.', ',').padStart(5, '\u2007'), spd = `×${fmt1(+S.play || 5)}`;
+  const txt = SIM ? `${tTxt} s · ${playing ? spd : '⏸'}` : '';
   if ($('clock').textContent !== txt) $('clock').textContent = txt;
 }
 $('bPlay').addEventListener('click', () => {
@@ -343,6 +353,7 @@ reg('p_vz', () => S.vz, v => { S.vz = Math.max(1, v); });
 reg('p_vzMon', () => S.vzMon, v => { S.vzMon = Math.max(1, v); });
 reg('p_openLoss', () => S.openLoss, v => { S.openLoss = Math.max(10, v); });
 reg('p_gap', () => S.gap, v => { S.gap = Math.max(10, v); });
+reg('p_redGap', () => S.redGap, v => { S.redGap = Math.max(10, v); });
 reg('p_dot', () => S.dot, v => { S.dot = Math.max(1, v); });
 reg('p_play', () => S.play, v => { S.play = Math.max(0.2, v); }, true);
 ['vertical', 'plat', 'eleve'].forEach(t => ['vt', 'd10', 'hOpen'].forEach(k => reg(`t_${t}_${k}`, () => S.types[t][k], v => { S.types[t][k] = v; })));
@@ -359,7 +370,7 @@ $('dirL').addEventListener('click', () => { S.dir = 'L'; fillInputs(); changed()
 $('dirR').addEventListener('click', () => { S.dir = 'R'; fillInputs(); changed(); });
 $('resetParams').addEventListener('click', async () => {
   if (!(await ask('Remettre les paramètres des chuteurs, sous voile et d\'affichage aux valeurs par défaut ?'))) return;
-  ['vz', 'vzMon', 'openLoss', 'gap', 'dot', 'play'].forEach(k => { S[k] = DEF[k]; }); S.types = clone(DEF.types); fillInputs(); changed();
+  ['vz', 'vzMon', 'openLoss', 'gap', 'redGap', 'dot', 'play'].forEach(k => { S[k] = DEF[k]; }); S.types = clone(DEF.types); fillInputs(); changed();
 });
 
 // Vents enregistrés : une liste de profils (4 tranches) pour montrer ce qu'on veut en cours

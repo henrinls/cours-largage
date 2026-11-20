@@ -11,7 +11,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Cours de largage · simulation</title>
-<link rel="stylesheet" href="style.css?v=0.3.1">
+<link rel="stylesheet" href="style.css?v=0.4.0">
 </head>
 <body>
 <canvas id="cv"></canvas>
@@ -86,7 +86,8 @@
     </div>
     <h3>Séparation et affichage</h3>
     <div class="grid2">
-      <div><label>Écart voulu entre paras (m)</label><input id="p_gap" inputmode="decimal"></div>
+      <div><label>Écart voulu, pour Auto (m)</label><input id="p_gap" inputmode="decimal"></div>
+      <div><label>Rouge en dessous de (m)</label><input id="p_redGap" inputmode="decimal"></div>
       <div><label>Points tous les (s)</label><input id="p_dot" inputmode="decimal"></div>
       <div><label>Vitesse de l'animation (×)</label><input id="p_play" inputmode="decimal"></div>
     </div>
@@ -105,6 +106,6 @@
 </div>
 <div id="toast" class="hidden"></div>
 
-<script src="app.js?v=0.3.1"></script>
+<script src="app.js?v=0.4.0"></script>
 </body>
 </html>
