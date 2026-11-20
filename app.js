@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.8.2';
+const VERSION = '0.9.0';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -19,8 +19,8 @@ const DEF = {
   paras: [{ type: 'plat' }, { type: 'plat' }, { type: 'eleve' }],
   winds: [
     { name: 'Vent nul', w: [0, 0, 0, 0] },
-    { name: 'Vent constant 6 m/s', w: [6, 6, 6, 6] },
-    { name: 'Vent fort en altitude', w: [5, 12, 18, 25] }
+    { name: 'Vent constant 5 m/s', w: [5, 5, 5, 5] },
+    { name: 'Vent décroissant', w: [3, 8, 12, 16] }
   ],
   windIdx: 0
 };
@@ -89,6 +89,21 @@ if (!S.windsV4) {
   const w = S.winds.find(x => x.name === 'Vent fort en altitude');
   if (w && w.w.join() === '3,8,12,16') w.w = [5, 12, 18, 25];
   S.windsV4 = true;
+}
+// v0.9.0 (Henri : plus réaliste, chiffres ronds) : « Vent fort en altitude » → « Vent décroissant » 3·8·12·16 m/s (sol → haut),
+// « Vent constant 6 m/s » → « Vent constant 5 m/s » ; mêmes renommages dans ses configurations enregistrées
+if (!S.windsV5) {
+  const fix = w => {
+    if (!w) return;
+    if (w.name === 'Vent fort en altitude') { w.name = 'Vent décroissant'; if (['5,12,18,25', '3,8,12,16'].includes(w.w.join())) w.w = [3, 8, 12, 16]; }
+    if (w.name === 'Vent constant 6 m/s' && w.w.join() === '6,6,6,6') { w.name = 'Vent constant 5 m/s'; w.w = [5, 5, 5, 5]; }
+  };
+  const cur = S.winds[S.windIdx];
+  S.winds.forEach(fix); (S.configs || []).forEach(c => fix(c.wind));
+  const mine = S.winds.filter(w => !DEF.winds.some(d => d.name === w.name));
+  const keep = DEF.winds.map(d => S.winds.find(w => w.name === d.name) || clone(d));
+  S.winds = keep.concat(mine);
+  const j = S.winds.indexOf(cur); S.windIdx = j >= 0 ? j : 0; S.windsV5 = true;
 }
 if (!(+S.redGap > 0)) S.redGap = DEF.redGap;
 S.paras.forEach(p => delete p.mon); delete S.vzMon;
@@ -441,7 +456,7 @@ if (!Array.isArray(S.configs)) S.configs = [];
 // v0.7.3 : configurations de base (demandées par Henri), toujours en tête du menu, dans cet ordre, non supprimables.
 // Face au vent, 70 kt, 4 000 m, temps entre sorties Auto. FF = vertical, VR = à plat.
 const BUILTIN = (() => {
-  const W = n => clone(DEF.winds.find(w => w.name === n)), nul = 'Vent nul', cst = 'Vent constant 6 m/s', dec = 'Vent fort en altitude';
+  const W = n => clone(DEF.winds.find(w => w.name === n)), nul = 'Vent nul', cst = 'Vent constant 5 m/s', dec = 'Vent décroissant';
   const P = s => s.split(' ').map(t => ({ type: { FF: 'vertical', VR: 'plat', E: 'eleve' }[t] }));
   const C = (name, paras, wind) => ({ name, paras: P(paras), wind: W(wind), dir: 'R', speed: 70, height: 4000, sep: null, builtin: true });
   return [
