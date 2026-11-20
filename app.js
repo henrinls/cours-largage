@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.8.1';
+const VERSION = '0.8.2';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -268,7 +268,7 @@ function draw() {
       g.strokeStyle = '#c8c8c8'; g.lineWidth = 1; g.setLineDash([2, 2]);
       g.beginPath(); g.moveTo(xa, y0); g.lineTo(xa, ys - 4); g.moveTo(xb, y0); g.lineTo(xb, ys - 4); g.stroke(); g.setLineDash([]);
       g.beginPath(); g.moveTo(xa, ys); g.lineTo(xb, ys); g.stroke();
-      const t = `${fmtInt(gp)} s · ${fmtInt(Math.abs(SIM.vpg) * gp)} m`, w = g.measureText(t).width, cx = (xa + xb) / 2;
+      const t = `${fmtInt(gp)} s`, w = g.measureText(t).width, cx = (xa + xb) / 2; /* secondes seulement (Henri : les mètres encombraient) */
       let ly = ys - 2; for (let r = 0; r < 3 && boxes.some(b => cx - w / 2 - 2 < b[1] && cx + w / 2 + 2 > b[0] && b[2] === ly); r++) ly -= 12; // chevauchement : un cran plus haut
       boxes.push([cx - w / 2 - 2, cx + w / 2 + 2, ly]);
       outlined(t, cx, ly, '#fff');
@@ -609,7 +609,8 @@ function syncSummary() {
   const ic = `<svg viewBox="-20 -10 40 20" width="58" height="29"><g transform="scale(${fl},1)" stroke="#000" stroke-width="1" fill="#e8e8e8"><path d="M16 0L9 -3L-12 -3L-16 -9L-19 -9L-17 -2L-17 2L9 3Z"/><path fill="#bbb" d="M2 0L-4 9L-8 9L-5 0Z"/></g></svg>` +
     `<svg viewBox="0 0 60 14" width="72" height="17"><path d="${S.dir === 'R' ? 'M4 7H55M47 1.5L55 7L47 12.5' : 'M56 7H5M13 1.5L5 7L13 12.5'}" fill="none" stroke="#4fc3f7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   // v0.7.2 : sous la flèche, l'espacement entre les sorties : ↔ temps / distance parcourue par l'avion (vitesse sol × temps)
-  const gapTxt = SIM.opt ? `↔\u00a0${SIM.gaps.map(fmtInt).join('·') || '–'}\u00a0s` : `↔\u00a0${fmtInt(SIM.sep)}\u00a0s / ${fmtInt(Math.abs(SIM.vpg) * SIM.sep)}\u00a0m` /* espaces insécables : sur petit écran, retour à la ligne seulement après le « / » */, key = S.dir + gapTxt;
+  // v0.8.2 (Henri) : le bouton garde toujours la consigne de base (largage uniforme), même en mode Optimisé
+  const gapTxt = `↔\u00a0${fmtInt(SIM.sep)}\u00a0s / ${fmtInt(Math.abs(SIM.vpg) * SIM.sep)}\u00a0m` /* espaces insécables : sur petit écran, retour à la ligne seulement après le « / » */, key = S.dir + gapTxt;
   if ($('bDir').dataset.k !== key) { $('bDir').innerHTML = ic + `<span class="gap">${gapTxt}</span>`; $('bDir').dataset.k = key; $('bDir').title = S.dir === 'R' ? 'Face au vent (appuyer pour vent dans le dos)' : 'Vent dans le dos (appuyer pour face au vent)'; }
   if (!$('sheet').classList.contains('hidden')) { renderWinds(); fillInputs(); } // Auto suit le vent : temps entre sorties à jour
 }
