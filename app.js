@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.7.4';
+const VERSION = '0.7.5';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -295,13 +295,23 @@ function hMeasure(c, col, placed, lineY) {
   const below = lineY != null;
   const ax = X(c.a.x), bx = X(c.b.x), ya = Y(c.a.z), yb = Y(c.b.z), y = below ? lineY : (ya + yb) / 2;
   g.save(); g.strokeStyle = col; g.globalAlpha = .85; g.lineWidth = 1;
-  g.setLineDash([2, 3]); g.beginPath(); g.moveTo(ax, ya); g.lineTo(ax, y); g.moveTo(bx, yb); g.lineTo(bx, y); g.stroke(); g.setLineDash([]);
+  g.setLineDash([2, 3]);
+  if (below) { // v0.7.5 : pointillés vers chaque para dans SA couleur (les paras ont dérivé sous voile, le trait ne tombe plus sur eux)
+    g.globalAlpha = 1; g.lineWidth = 1.4;
+    g.strokeStyle = SIM.paras[c.i].color; g.beginPath(); g.moveTo(ax, ya); g.lineTo(ax, y); g.stroke();
+    g.strokeStyle = SIM.paras[c.i + 1].color; g.beginPath(); g.moveTo(bx, yb); g.lineTo(bx, y); g.stroke();
+    g.strokeStyle = col; g.globalAlpha = .85; g.lineWidth = 1;
+  } else { g.beginPath(); g.moveTo(ax, ya); g.lineTo(ax, y); g.moveTo(bx, yb); g.lineTo(bx, y); g.stroke(); }
+  g.setLineDash([]);
   g.beginPath(); g.moveTo(ax, y); g.lineTo(bx, y); g.moveTo(ax, y - 4); g.lineTo(ax, y + 4); g.moveTo(bx, y - 4); g.lineTo(bx, y + 4); g.stroke(); g.restore();
   g.font = '700 11px -apple-system, Helvetica, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'bottom';
   const t = `${Math.round(c.d)} m`, w = g.measureText(t).width, cx = (ax + bx) / 2;
   let ly = below ? y + 17 : y - 3; // les étiquettes ne se chevauchent pas : on décale celle qui tomberait sur une autre
   const hit = yy => (placed || []).some(b => cx - w / 2 - 3 < b.x2 && cx + w / 2 + 3 > b.x1 && yy - 13 < b.y2 && yy + 1 > b.y1);
-  for (let n = 0; n < 8 && hit(ly); n++) ly += below ? 15 : -15;
+  // à la fin : chiffre sous le trait ; s'il ne tient pas (segment trop court ou autre chiffre), AU-DESSUS du trait (Henri),
+  // et seulement si c'est encore pris, plus bas
+  if (below && (w + 6 > Math.abs(bx - ax) || hit(ly)) && !hit(y - 4)) ly = y - 4;
+  else for (let n = 0; n < 8 && hit(ly); n++) ly += below ? 15 : -15;
   if (placed) placed.push({ x1: cx - w / 2 - 3, x2: cx + w / 2 + 3, y1: ly - 13, y2: ly + 1 });
   g.fillStyle = 'rgba(17,17,17,.85)'; g.fillRect(cx - w / 2 - 3, ly - 13, w + 6, 14);
   outlined(t, cx, ly, col);
