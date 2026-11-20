@@ -2,7 +2,7 @@
 // Vue de profil : l'avion en haut, le sol en bas ; trajectoires gardées en pointillés, points numérotés à intervalle
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins de l'écart voulu (300 m) → en rouge.
 'use strict';
-const VERSION = '0.2.0';
+const VERSION = '0.2.1';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -262,7 +262,10 @@ scrub.addEventListener('pointerdown', () => { scrubbing = true; playing = false;
 function syncCtrl() {
   if (SIM) { scrub.max = SIM.tEnd; if (!scrubbing) scrub.value = tNow; }
   $('bPlay').classList.toggle('on', playing && !slowHeld); $('bSlow').classList.toggle('on', slowHeld);
-  $('clock').textContent = SIM ? `t = ${fmt1(tNow)} s${playing ? (slowHeld ? ' · ×1' : ` · ×${fmt1(+S.play || 5)}`) : ''}` : '';
+  // texte de longueur constante (toujours une décimale, vitesse toujours affichée) : la ligne du haut ne doit plus sauter
+  const tTxt = (Math.round(tNow * 10) / 10).toFixed(1).replace('.', ','), spd = slowHeld ? '×1' : `×${fmt1(+S.play || 5)}`;
+  const txt = SIM ? `t = ${tTxt} s · ${playing ? spd : 'pause'}` : '';
+  if ($('clock').textContent !== txt) $('clock').textContent = txt;
 }
 $('bPlay').addEventListener('click', () => { if (SIM && tNow >= SIM.tEnd) tNow = 0; playing = true; slowHeld = false; syncCtrl(); });
 $('bPause').addEventListener('click', () => { playing = false; slowHeld = false; syncCtrl(); });
