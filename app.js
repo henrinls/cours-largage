@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.11.0';
+const VERSION = '0.11.1';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -483,7 +483,8 @@ const BUILTIN = (() => {
     C('VR puis FF · vent décroissant', 'VR FF', dec),
     C('FF, 2 VR, élève, FF · vent décroissant', 'FF VR VR E FF', dec),
     C('2 VR, FF, élève, FF · vent décroissant', 'VR VR FF E FF', dec),
-    C('FF puis élève · vent décroissant', 'FF E', dec)
+    C('FF puis élève · vent décroissant', 'FF E', dec),
+    C('Élève puis FF · vent décroissant', 'E FF', dec)
   ];
 })();
 // v0.7.9 : configuration en cours gardée (S.cfgName) même après une modification (S.cfgDirty → « (modifiée) »)
