@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.12.1';
+const VERSION = '0.13.0';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -688,3 +688,10 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
   }).catch(() => {});
 }
+
+/* Titres de paragraphe (h3) collés sous les onglets quand on fait défiler le menu (21 nov. 2026, commun à toutes les applis) */
+(function () {
+  const s = document.getElementById('sheet'), t = s && s.querySelector('.tabs'); if (!t) return;
+  const f = () => { if (t.offsetHeight) s.style.setProperty('--h3top', ((parseFloat(getComputedStyle(t).top) || 0) + t.offsetHeight) + 'px'); };
+  if (window.ResizeObserver) new ResizeObserver(f).observe(t); window.addEventListener('resize', f); f();
+})();
