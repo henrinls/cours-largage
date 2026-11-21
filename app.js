@@ -3,7 +3,7 @@
 // régulier (même numéro = même instant) ; deux paras qui se suivent à moins du seuil (250 m) → en rouge.
 // L'écart voulu (300 m, ce qu'on demande aux élèves de calculer) sert au bouton Auto ; on s'inquiète sous 250 m.
 'use strict';
-const VERSION = '0.12.0';
+const VERSION = '0.12.1';
 const G = 9.81, KT = 0.514444;
 const $ = id => document.getElementById(id);
 
@@ -539,6 +539,9 @@ $('cfgSel').addEventListener('change', async e => {
   }
   renderConfigs();
 });
+/* v0.12.1 : changer le sens de largage (face au vent / vent dans le dos) ne marque pas la configuration « (modif.) » :
+   c'est une bascule qu'on fait pendant le cours, pas une modification de la configuration enregistrée. */
+function dirChanged() { const d = S.cfgDirty; changed(); S.cfgDirty = d; save(); renderConfigs(); }
 function changed(keepTime) { if (!keepTime && S.cfgName) S.cfgDirty = true; save(); renderStrip(); simulate(); if (!keepTime) { tNow = 0; playing = false; } else tNow = Math.min(tNow, SIM.tEnd); draw(); syncCtrl(); syncSummary(); renderConfigs(); }
 
 function renderParas() {
@@ -603,8 +606,8 @@ function fillInputs() {
   $('dirL').classList.toggle('on', S.dir !== 'R'); $('dirR').classList.toggle('on', S.dir === 'R');
 }
 $('sepAuto').addEventListener('click', () => { S.sep = null; fillInputs(); changed(); });
-$('dirL').addEventListener('click', () => { S.dir = 'L'; fillInputs(); changed(); });
-$('dirR').addEventListener('click', () => { S.dir = 'R'; fillInputs(); changed(); });
+$('dirL').addEventListener('click', () => { S.dir = 'L'; fillInputs(); dirChanged(); });
+$('dirR').addEventListener('click', () => { S.dir = 'R'; fillInputs(); dirChanged(); });
 document.querySelectorAll('#optBox .opt').forEach(b => b.addEventListener('click', () => { // un seul actif ; réappui = uniforme
   S.optMode = S.optMode === b.dataset.m ? null : b.dataset.m; save(); simulate(); tNow = 0; playing = false; draw(); syncCtrl(); syncSummary(); fillInputs(); syncOpt();
 }));
@@ -613,7 +616,7 @@ function renderStrip() { // pictogrammes des paras sous le menu Configs
   if ($('paraStrip').innerHTML !== html) $('paraStrip').innerHTML = html;
 }
 function syncOpt() { document.querySelectorAll('#optBox .opt').forEach(b => b.classList.toggle('on', S.optMode === b.dataset.m)); }
-$('bDir').addEventListener('click', () => { S.dir = S.dir === 'R' ? 'L' : 'R'; fillInputs(); changed(); });
+$('bDir').addEventListener('click', () => { S.dir = S.dir === 'R' ? 'L' : 'R'; fillInputs(); dirChanged(); });
 $('resetParams').addEventListener('click', async () => {
   if (!(await ask('Remettre les paramètres des chuteurs, sous voile et d\'affichage aux valeurs par défaut ?'))) return;
   ['vz', 'openLoss', 'gap', 'redGap', 'dot', 'play'].forEach(k => { S[k] = DEF[k]; }); S.types = clone(DEF.types); fillInputs(); changed();
